@@ -15,7 +15,7 @@ hostname = api.m.jd.com
 var body = $response.body;
 
 
-body = body.replace(/\"couponState"::\d+/g, '\"couponState":1');
+body = body.replace(/\"couponState":\d+/g, '\"couponState":1');
 
 body = body.replace(/\"intervalUsedCount":\d+/g, '\"intervalUsedCount":1');
 
