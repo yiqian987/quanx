@@ -9,8 +9,9 @@
 
 #!icon=https://raw.githubusercontent.com/deezertidal/private/main/icons/aqc.png
 **************************************
+
 [rewrite_local]
-^https?://aiqicha.baidu.com/usercenter/getvipinfoajax url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/aqc.js
+^https?://aiqicha\.baidu\.com/usercenter/getvipinfoajax url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/aqc.js
 [mitm]
 hostname = aiqicha.baidu.com
 *************************************/
