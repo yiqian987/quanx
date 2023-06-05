@@ -12,7 +12,7 @@
 
 
 [rewrite_local]
-^https?:\/\/www\.ssalegs\.store\/cms\/Appapi\/username\/username\/\d+ url script-response-body  https://raw.githubusercontent.com/lutqhysky/quantumultx/mylove/SSA/Script/SSA.js script-update-interval=0
+^https?:\/\/www\.ssalegs\.store\/cms\/Appapi\/username\/username\/\d+ url script-response-body  https://raw.githubusercontent.com/yiqian987/quanx/main/ssa.js script-update-interval=0
 
 [mitm]
 hostname = www.ssalegs.store
