@@ -6,10 +6,10 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/jz\.wacaijizhang\.com url script-response-body https://raw.githubusercontent.com/chxm1023/Rewrite/main/wacaijizhang.js
+^https?:\/\/jz\.wacaijizhang\.com url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/wacai.js
 
 [mitm]
-hostname = jz.wacai.com
+hostname = jz.wacaijizhang.com
 
 *************************************/
 
