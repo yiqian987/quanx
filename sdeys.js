@@ -22,4 +22,6 @@ body = body.replace(/\"can_tag":\d+/g, '\"can_tag":1');
 
 body = body.replace(/\"fulled_tag":\d+/g, '\"fulled_tag":0');
 
+body = body.replace(/\"today_can_tag":\d+/g, '\"today_can_tag":1');
+
 $done({body});
