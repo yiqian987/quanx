@@ -16,7 +16,7 @@ hostname = yyxt.shouer.com.cn
 
 var body = $response.body;
 
-body = body.replace(/\"Remain":\d+/g, '\"Remain":100');
+body = body.replace(/\"Remain":"\d+"/g, '\"Remain":"100"');
 
 body = body.replace(/\"can_tag":"\d+"/g, '\"can_tag":"1"');
 
