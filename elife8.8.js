@@ -18,7 +18,7 @@ var body = $response.body;
 
 body = body.replace(/\"remainStock":\d+/g, '\"remainStock":100');
 
-body = body.replace(/\"buttonType":"\d+"/g, '\"buttonType":"01"');
+body = body.replace(/\"rechargeType":"\d+"/g, '\"rechargeType":"01"');
 
 body = body.replace(/\"productActStatus":"\d+"/g, '\"productActStatus":""');
 
