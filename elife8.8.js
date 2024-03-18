@@ -22,4 +22,6 @@ body = body.replace(/\"rechargeType":"\d+"/g, '\"rechargeType":"01"');
 
 body = body.replace(/\"productActStatus":"\d+"/g, '\"productActStatus":""');
 
+body = body.replace(/\"startTime":"2024-03-18 10:00:00"/g, '\"startTime":"2024-03-18 09:00:00"');
+
 $done({body});
