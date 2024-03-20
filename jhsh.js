@@ -15,7 +15,7 @@ hostname = yunbusiness.ccb.com
 var body = $response.body;
 
 
-body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"SYSTEM_TIME": "2023-12-15 18:59:59"');
+body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"SYSTEM_TIME": "2024-03-20 18:59:59"');
 
 body = body.replace(/\"HdFrSl_Lock_Num":"\d+,"/, '\"HdFrSl_Lock_Num": "0",');
 
