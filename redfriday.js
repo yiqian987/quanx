@@ -22,4 +22,8 @@ body = body.replace(/\"buttonType":"\d+"/g, '\"buttonType":"01"');
 
 body = body.replace(/\"productActStatus":"\d+"/g, '\"productActStatus":""');
 
+body = body.replace(/value="\d+"/g, 'value="01"');
+
+body = body.replace(/currentTm = "(\"|\d:\d{1,2}:\d{2})|\""/g, 'currentTm = "9:00:00"');
+
 $done({body});
