@@ -27,7 +27,7 @@ body = body.replace(/\"AVALIABLE_STOCK":"\d+",/, '\"AVALIABLE_STOCK":"50",');
 
 body = body.replace(/\"SURPLUS_STOCK":"\d+",/, '\"SURPLUS_STOCK": "30",');
 
-body = body.replace(/\"EFFECT_PERIOD_END":"\d+",/, '\"EFFECT_PERIOD_END": "20990630235959",');
+body = body.replace(/\"EFFECT_PERIOD_END":"\d+",/g, '\"EFFECT_PERIOD_END": "20990630235959",');
 
 body = body.replace(/\"Cur_Vld_Ind":"\d+",/, '\"Cur_Vld_Ind": "1",');
 
