@@ -17,13 +17,13 @@ var body = $response.body;
 
 body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"SYSTEM_TIME": "2024-04-07 18:59:59"');
 
-body = body.replace(/\"HdFrSl_Lock_Num":"\d+,"/, '\"HdFrSl_Lock_Num": "0",');
+body = body.replace(/\"HdFrSl_Lock_Num":"\d+",/, '\"HdFrSl_Lock_Num": "0",');
 
 body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/, '\"SOLD_OUT_DATE": "0",');
 
-//body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+,"/, '\"Alrdy_Sell_Ivnt_Num": "1",');
+//body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/, '\"Alrdy_Sell_Ivnt_Num": "1",');
 
-body = body.replace(/\"AVALIABLE_STOCK":"\d+,"/, '\"AVALIABLE_STOCK":"50",');
+body = body.replace(/\"AVALIABLE_STOCK":"\d+",/, '\"AVALIABLE_STOCK":"50",');
 
 body = body.replace(/\"SURPLUS_STOCK":"\d+",/, '\"SURPLUS_STOCK": "30",');
 
