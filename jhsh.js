@@ -25,7 +25,7 @@ body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/, '
 
 body = body.replace(/\"AVALIABLE_STOCK":"\d+",/, '\"AVALIABLE_STOCK":"50",');
 
-body = body.replace(/\"SURPLUS_STOCK":"\d+",/, '\"SURPLUS_STOCK": "30",');
+body = body.replace(/\"SURPLUS_STOCK":"\d+",/g, '\"SURPLUS_STOCK": "30",');
 
 body = body.replace(/\"EFFECT_PERIOD_END":"\d+",/g, '\"EFFECT_PERIOD_END": "20990630235959",');
 
