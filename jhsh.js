@@ -21,7 +21,7 @@ body = body.replace(/\"HdFrSl_Lock_Num":"\d+",/, '\"HdFrSl_Lock_Num": "0",');
 
 body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/, '\"SOLD_OUT_DATE": "0",');
 
-//body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/, '\"Alrdy_Sell_Ivnt_Num": "1",');
+//body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/g, '\"Alrdy_Sell_Ivnt_Num": "1",');
 
 body = body.replace(/\"AVALIABLE_STOCK":"\d+",/, '\"AVALIABLE_STOCK":"50",');
 
@@ -31,7 +31,7 @@ body = body.replace(/\"EFFECT_PERIOD_END":"\d+",/g, '\"EFFECT_PERIOD_END": "2099
 
 body = body.replace(/\"Cur_Vld_Ind":"\d+",/, '\"Cur_Vld_Ind": "1",');
 
-body = body.replace(/\"Remain_Num":"\d+",/, '\"Remain_Num": "1",');
+body = body.replace(/\"Remain_Num":"\d+",/g, '\"Remain_Num": "1",');
 
 body = body.replace(/\"SpBkAtAyTm_Ind":"\d+",/, '\"SpBkAtAyTm_Ind": "0",');
 
