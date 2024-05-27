@@ -32,29 +32,29 @@ body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"S
 //body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"SYSTEM_TIME": "2024-04-07 18:59:59"');
 
 // HdFrSl_Lock_Num:可修改状态为“已抢光，若有人放弃可补抢”
-body = body.replace(/\"HdFrSl_Lock_Num":"\d+",/, '\"HdFrSl_Lock_Num": "0",');
+body = body.replace(/\"HdFrSl_Lock_Num":"\d+",/g, '\"HdFrSl_Lock_Num": "0",');
 
 // "RvPy_Txn_Tot_Dnum":可修改状态为 今日已抢光
-body = body.replace(/\"RvPy_Txn_Tot_Dnum":"\d+",/, '\"RvPy_Txn_Tot_Dnum": "0",');
+body = body.replace(/\"RvPy_Txn_Tot_Dnum":"\d+",/g, '\"RvPy_Txn_Tot_Dnum": "0",');
 
-body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/, '\"SOLD_OUT_DATE": "0",');
+body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/g, '\"SOLD_OUT_DATE": "0",');
 
 // Alrdy_Sell_Ivnt_Num:可修改状态为“已抢光”
 body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/g, '\"Alrdy_Sell_Ivnt_Num": "1",');
 
-body = body.replace(/\"AVALIABLE_STOCK":"\d+",/, '\"AVALIABLE_STOCK":"50",');
+body = body.replace(/\"AVALIABLE_STOCK":"\d+",/g, '\"AVALIABLE_STOCK":"50",');
 
 body = body.replace(/\"SURPLUS_STOCK":"\d+",/g, '\"SURPLUS_STOCK": "30",');
 
 body = body.replace(/\"EFFECT_PERIOD_END":"\d+",/g, '\"EFFECT_PERIOD_END": "20990630235959",');
 
-body = body.replace(/\"Cur_Vld_Ind":"\d+",/, '\"Cur_Vld_Ind": "1",');
+body = body.replace(/\"Cur_Vld_Ind":"\d+",/g, '\"Cur_Vld_Ind": "1",');
 
 // "Remain_Num":可修改状态为“已抢光”
 body = body.replace(/\"Remain_Num":"\d+",/g, '\"Remain_Num": "1",');
 
-body = body.replace(/\"SpBkAtAyTm_Ind":"\d+",/, '\"SpBkAtAyTm_Ind": "0",');
+body = body.replace(/\"SpBkAtAyTm_Ind":"\d+",/g, '\"SpBkAtAyTm_Ind": "0",');
 
-body = body.replace(/\"USER_GET_NUM":"\d+",/, '\"USER_GET_NUM": "0",');
+body = body.replace(/\"USER_GET_NUM":"\d+",/g, '\"USER_GET_NUM": "0",');
 
 $done({body});
