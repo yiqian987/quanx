@@ -5,7 +5,7 @@
 **************************************
 
 [rewrite_local]
-^https?://yunbusiness\.ccb\.com/(clp_coupon|clp_service)/txCtrl\?.* url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jhsh.js
+^https?://yunbusiness\.ccb\.com/(clp_coupon)/txCtrl\?.* url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jhsh.js
 [mitm]
 hostname = yunbusiness.ccb.com
 
