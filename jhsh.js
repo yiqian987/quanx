@@ -40,7 +40,7 @@ body = body.replace(/\"RvPy_Txn_Tot_Dnum":"\d+"/g, '\"RvPy_Txn_Tot_Dnum": "0"');
 body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/g, '\"SOLD_OUT_DATE": "0",');
 
 // Alrdy_Sell_Ivnt_Num:可修改状态为“已抢光”
-// body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/g, '\"Alrdy_Sell_Ivnt_Num": "1",');
+body = body.replace(/\"Alrdy_Sell_Ivnt_Num":"\d+",/g, '\"Alrdy_Sell_Ivnt_Num": "1",');
 
 body = body.replace(/\"AVALIABLE_STOCK":"\d+",/g, '\"AVALIABLE_STOCK":"50",');
 
