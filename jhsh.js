@@ -35,7 +35,7 @@ body = body.replace(/\"SYSTEM_TIME":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"/, '\"S
 body = body.replace(/\"HdFrSl_Lock_Num":"\d+",/g, '\"HdFrSl_Lock_Num": "0",');
 
 // "RvPy_Txn_Tot_Dnum":可修改状态为 今日已抢光
-body = body.replace(/\"RvPy_Txn_Tot_Dnum":"\d+",/g, '\"RvPy_Txn_Tot_Dnum": "0",');
+body = body.replace(/\"RvPy_Txn_Tot_Dnum":"\d+"/g, '\"RvPy_Txn_Tot_Dnum": "0"');
 
 body = body.replace(/\"SOLD_OUT_DATE":"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}",/g, '\"SOLD_OUT_DATE": "0",');
 
