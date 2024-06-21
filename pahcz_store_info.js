@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?://newretail\.pingan\.com\.cn/ydt/booking/store/infos.* url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_store_info.js
+^https?://newretail\.pingan\.com\.cn/ydt/booking/store/infos.* url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
 
 [mitm]
 hostname = newretail.pingan.com.cn
@@ -15,8 +15,6 @@ hostname = newretail.pingan.com.cn
 
 
 var body = $response.body;
-
-var dataBlock = body.match(/data\s*:\s*\[(.*?)\]/s)[1];
 
 // 创建新对象
 var newObject = '{
@@ -73,12 +71,13 @@ var newObject = '{
             "mgWaiterUmId": null,
             "counterManager": null,
             "mobilePhone": null
-        },';
+        }';
 
-// 将新对象添加到data块的开头
-dataBlock = newObject + dataBlock;
+var json = JSON.parse(body);
+var dataBlock = json.data.join(',');
+json.data = [newObject];
+json.data.push(dataBlock);
+var newJsonString = JSON.stringify(json);
 
-// 将处理后的data块替换回原始内容
-body = body.replace(/data\s*:\s*\[(.*?)\]/s, 'data: [' + dataBlock + ']');
 
-$done({body})
+$done({newJsonString})
