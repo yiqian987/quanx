@@ -17,4 +17,4 @@ hostname = newretail.pingan.com.cn
 var body = $response.body;
 
 body = body.replace(/\"storefrontname":"\平安产险北京分公司世纪财富中心门店",/g, '\"storefrontname": "我就看看匹配到哦啊了么平安产险北京分公司世纪财富中心门店",');
-$done({body})
+$done({body});
