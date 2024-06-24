@@ -72,5 +72,5 @@ var newObject = {
             "mobilePhone": null
         };
 
-body.data.unshift(newObject);
+body = body.data.unshift(newObject);
 $done({body})
