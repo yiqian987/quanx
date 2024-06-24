@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/newretail\.pingan\.com\.cn\/ydt\/booking\/store\/infos\?.+ url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_book_info.js
+^https?:\/\/newretail\.pingan\.com\.cn\/ydt\/booking\/store\/infos\?pageNum\=1&pageSize\=100&cityCode\=110106&source\=ICORE_PAMS&longitude\=116\.326129&latitude\=39\.863129&time\=.+ url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_book_info.js
 
 [mitm]
 hostname = newretail.pingan.com.cn
