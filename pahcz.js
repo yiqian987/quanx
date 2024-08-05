@@ -34,7 +34,7 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
 
 var body = $response.body;
-body = body.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'formattedDate'"');
+body = body.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
 body = body.replace(/\"bookableNum":\d+/g, '\"bookableNum":100');
 
