@@ -19,8 +19,12 @@ const currentDate = new Date();
 // 获取星期几的数字
 const dayOfWeekNumber = currentDate.getDay();
 
+// 如果是周一到周三，则将日期增加2天
+if (dayOfWeekNumber >= 1 && dayOfWeekNumber <= 3) {
+  currentDate.setDate(currentDate.getDate() + 2);
+}
 // 如果是周四或周五，则将日期增加4天
-if (dayOfWeekNumber === 4 || dayOfWeekNumber === 5) {
+else if (dayOfWeekNumber === 4 || dayOfWeekNumber === 5) {
   currentDate.setDate(currentDate.getDate() + 4);
 }
 
