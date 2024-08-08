@@ -49,7 +49,7 @@ var body = {
     "data": [
         {
             "storefrontSeq": "39807",
-            "bookingDate": "2024年08月05日 星期三",
+            "bookingDate": "${formattedDate}",
             "businessType": "14",
             "totalBookableNum": 5,
             "totalBookable": 5,
