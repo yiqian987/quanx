@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?://newretail\.pingan\.com\.cn/ydt/reserve/store/bookingTime url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
+^https?://newretail\.pingan\.com\.cn/ydt/reserve/store/bookingTime\?.* url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
 
 [mitm]
 hostname = newretail.pingan.com.cn
@@ -42,8 +42,8 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 // 组合成“年-月-日 星期几”格式
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
 
-// var body = $response.body;
-var body = {
+var body = $response.body;
+body = {
     "code": 200,
     "msg": "OK",
     "data": [
