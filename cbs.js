@@ -7,7 +7,7 @@
 [rewrite_local]
 ^https?://yun\.aichangbaishan\.com/platform/api\?method=ih\.cticket\.info\.getRestTickets url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/cbs.js
 [mitm]
-hostname = aichangbaishan.com
+hostname = yun.aichangbaishan.com
 
 *************************************/
 
