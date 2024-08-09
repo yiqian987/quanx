@@ -14,6 +14,6 @@ hostname = aichangbaishan.com
 
 var body = $response.body;
 
-body = body.replace(/\"number":\s\d+,/g, '\"number": 100,');
+body = body.replace(/\"number": \d+,/g, '\"number": 100,');
 
 $done({body});
