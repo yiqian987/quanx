@@ -38,7 +38,6 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 
 // 组合成“年-月-日 星期几”格式
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
-// const myData = '{"code":200,"msg":"OK","data":[{"storefrontSeq":"39807","bookingDate":formattedDate,"businessType":"14","totalBookableNum":5,"totalBookable":5,"totalBooked":0,"bookingRules":[{"idBookingSurvey":"c92a666fb46a46a8b1e4858890fff22c","startTime":"9:00","endTime":"10:00","bookableNum":1,"bookedNum":0},{"idBookingSurvey":"718946a308c349a9a3dbcbc39455a59e","startTime":"10:00","endTime":"11:00","bookableNum":1,"bookedNum":0},{"idBookingSurvey":"0562b1b8f35449a288d6cb446cfbc61e","startTime":"11:00","endTime":"12:00","bookableNum":1,"bookedNum":0},{"idBookingSurvey":"cdd7342776da4367b0c3ffe397ae2b2a","startTime":"14:00","endTime":"15:00","bookableNum":1,"bookedNum":0},{"idBookingSurvey":"b3f877f644024ac7b87c8569a446c74c","startTime":"15:00","endTime":"16:00","bookableNum":1,"bookedNum":0}]}]}';
 const myData = JSON.stringify({
     "code": 200,
     "msg": "OK",
