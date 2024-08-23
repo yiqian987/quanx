@@ -1,10 +1,17 @@
-/**
-* @fileoverview Example to compose response for rewrite of script-echo-response.
-*
-* $request.url, $notify(title, subtitle, message), console.log(message), $done(response)
-*
-* @supported Quantumult X (v1.0.3-build141)
-*/
+/*************************************
+
+项目名称：平安好车主
+使用声明：⚠️仅供参考，🈲转载与售卖！
+
+**************************************
+
+[rewrite_local]
+^https?:\/\/newretail\.pingan\.com\.cn/ydt/reserve/store/bookingTime\?.* url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
+
+[mitm]
+hostname = newretail.pingan.com.cn
+
+*************************************/
 
 const myStatus = "HTTP/1.1 200 OK";
 
