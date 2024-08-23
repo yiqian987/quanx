@@ -42,8 +42,7 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 // 组合成“年-月-日 星期几”格式
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
 
-var body = $response.body;
-body = {
+const myResponse = {
     "code": 200,
     "msg": "OK",
     "data": [
@@ -94,12 +93,6 @@ body = {
         }
     ]
 }
-body = body.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
+myResponse = myResponse.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
-body = body.replace(/\"bookableNum":\d+/g, '\"bookableNum":100');
-
-body = body.replace(/\"totalBookableNum":\d+/g, '\"totalBookableNum":100');
-
-body = body.replace(/\"totalBooked":\d+/g, '\"totalBooked":0');
-
-$done({body})
+$done({myResponse})
