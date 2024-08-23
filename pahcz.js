@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/newretail\.pingan\.com\.cn/ydt/reserve/store/bookingTime url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
+^https?:\/\/newretail\.pingan\.com\.cn/ydt/reserve/store/bookingTime\?.* url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz.js
 
 [mitm]
 hostname = newretail.pingan.com.cn
@@ -92,7 +92,7 @@ const myResponse = {
             ]
         }
     ]
-}
+};
 // myResponse = myResponse.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
 $done(myResponse);
