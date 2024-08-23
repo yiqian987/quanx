@@ -13,6 +13,8 @@ hostname = newretail.pingan.com.cn
 
 *************************************/
 
+const myStatus = "HTTP/1.1 200 OK";
+const myHeaders = {"Server": "loading", "Content-Type": "application/json", "Connection": "keep-alive"};
 // 创建一个表示当前日期和时间的新Date对象
 const currentDate = new Date();
 
@@ -42,7 +44,7 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 // 组合成“年-月-日 星期几”格式
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
 
-const myResponse = {
+const myData = {
     "code": 200,
     "msg": "OK",
     "data": [
@@ -92,6 +94,10 @@ const myResponse = {
             ]
         }
     ]
+const myResponse = {
+    status: myStatus,
+    headers: myHeaders,
+    body: myData
 };
 // myResponse = myResponse.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
