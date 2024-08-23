@@ -8,7 +8,7 @@
 
 const myStatus = "200";
 
-const myHeaders = $response.headers;
+// const myHeaders = $response.headers;
 
 // 创建一个表示当前日期和时间的新Date对象
 //const currentDate = new Date();
@@ -38,11 +38,11 @@ const myHeaders = $response.headers;
 
 // 组合成“年-月-日 星期几”格式
 //const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
-const myData = "Here we go."
+const myData = '{"cacheExpirationDays":999,"resultCode":"GOOD","message":"Device Valid"}'
 
 const myResponse = {
     status: myStatus,
-    headers: myHeaders, // Optional.
+    headers: $response.headers, // Optional.
     body: myData // Optional.
 };
 
