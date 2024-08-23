@@ -8,7 +8,7 @@
 
 const myStatus = "HTTP/1.1 200 OK";
 
-const myHeaders = {"Server": "loading", "Content-Type": "application/json", "Connection": "keep-alive"};;
+const myHeaders = $response.headers;
 
 // 创建一个表示当前日期和时间的新Date对象
 const currentDate = new Date();
@@ -44,7 +44,7 @@ const myData = {
     "data": [
         {
             "storefrontSeq": "39807",
-            "bookingDate": formattedDate,
+            "bookingDate": "2024年08月26日 星期一",
             "businessType": "14",
             "totalBookableNum": 5,
             "totalBookable": 5,
