@@ -6,9 +6,9 @@
 * @supported Quantumult X (v1.0.3-build141)
 */
 
-const myStatus = "200";
+const myStatus = "HTTP/1.1 200 OK";
 
-// const myHeaders = $response.headers;
+const myHeaders = {"Server": "loading", "Content-Type": "application/json", "Connection": "keep-alive"};
 
 // 创建一个表示当前日期和时间的新Date对象
 //const currentDate = new Date();
@@ -42,8 +42,8 @@ const myData = '{"cacheExpirationDays":999,"resultCode":"GOOD","message":"Device
 
 const myResponse = {
     status: myStatus,
-    headers: $response.headers, // Optional.
-    body: myData // Optional.
+    headers: myHeaders,
+    body: myData
 };
 
 $done(myResponse);
