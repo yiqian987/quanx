@@ -48,7 +48,7 @@ const myResponse = {
     "data": [
         {
             "storefrontSeq": "39807",
-            "bookingDate": "2024年08月08日 星期四",
+            "bookingDate": formattedDate,
             "businessType": "14",
             "totalBookableNum": 5,
             "totalBookable": 5,
@@ -93,6 +93,6 @@ const myResponse = {
         }
     ]
 }
-myResponse = myResponse.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
+// myResponse = myResponse.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
-$done({myResponse})
+$done(myResponse);
