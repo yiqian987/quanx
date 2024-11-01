@@ -38,4 +38,6 @@ body = body.replace(/\"matchVipTrial":\w+/g, '\"matchVipTrial":true');
 
 body = body.replace(/\"adFreeVipEnable":\d+/g, '\"adFreeVipEnable":1');
 
+body = body.replace(/\"isVipMember":\w+/g, '\"isVipMember":true');
+
 $done({body});
