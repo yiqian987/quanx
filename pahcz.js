@@ -45,65 +45,58 @@ const dayOfWeek = daysOfWeek[dayOfWeekNumber];
 
 // 组合成“年-月-日 星期几”格式
 const formattedDate = `${year}年${month}月${day}日 ${dayOfWeek}`;
-const myData = JSON.stringify($response.body);
-myData = myData.replace(/\"bookingDate":"\d{4}年\d{1,2}月\d{1,2}日\s星期[一二三四五六日]"/, '\"bookingDate": "'+formattedDate+'"');
 
-myData = myData.replace(/\"bookableNum":\d+/g, '\"bookableNum":100');
-
-myData = myData.replace(/\"totalBookableNum":\d+/g, '\"totalBookableNum":100');
-
-myData = myData.replace(/\"totalBooked":\d+/g, '\"totalBooked":0');
-// const myData = JSON.stringify({
-//     "code": 200,
-//     "msg": "OK",
-//     "data": [
-//         {
-//             "storefrontSeq": "39807",
-//             "bookingDate": formattedDate,
-//             "businessType": "14",
-//             "totalBookableNum": 5,
-//             "totalBookable": 5,
-//             "totalBooked": 0,
-//             "bookingRules": [
-//                 {
-//                     "idBookingSurvey": "5b306357bbe7464b980c119797458b30",
-//                     "startTime": "9:00",
-//                     "endTime": "10:00",
-//                     "bookableNum": 1,
-//                     "bookedNum": 0
-//                 },
-//                 {
-//                     "idBookingSurvey": "bdb7b16b7b7841b587f33e3e63aa1af4",
-//                     "startTime": "10:00",
-//                     "endTime": "11:00",
-//                     "bookableNum": 1,
-//                     "bookedNum": 0
-//                 },
-//                 {
-//                     "idBookingSurvey": "355fe8c3e77b41e3aeca687e0e82e146",
-//                     "startTime": "11:00",
-//                     "endTime": "12:00",
-//                     "bookableNum": 1,
-//                     "bookedNum": 0
-//                 },
-//                 {
-//                     "idBookingSurvey": "dffcf25609934a22910448b4b7206bf9",
-//                     "startTime": "14:00",
-//                     "endTime": "15:00",
-//                     "bookableNum": 1,
-//                     "bookedNum": 0
-//                 },
-//                 {
-//                     "idBookingSurvey": "be61761fad344985b2d20dc63ba31efa",
-//                     "startTime": "15:00",
-//                     "endTime": "16:00",
-//                     "bookableNum": 1,
-//                     "bookedNum": 0
-//                 }
-//             ]
-//         }
-//     ]
-// });
+const myData = JSON.stringify({
+    "code": 200,
+    "msg": "OK",
+    "data": [
+        {
+            "storefrontSeq": "39807",
+            "bookingDate": formattedDate,
+            "businessType": "14",
+            "totalBookableNum": 5,
+            "totalBookable": 5,
+            "totalBooked": 0,
+            "bookingRules": [
+                {
+                    "idBookingSurvey": "5b306357bbe7464b980c119797458b30",
+                    "startTime": "9:00",
+                    "endTime": "10:00",
+                    "bookableNum": 1,
+                    "bookedNum": 0
+                },
+                {
+                    "idBookingSurvey": "bdb7b16b7b7841b587f33e3e63aa1af4",
+                    "startTime": "10:00",
+                    "endTime": "11:00",
+                    "bookableNum": 1,
+                    "bookedNum": 0
+                },
+                {
+                    "idBookingSurvey": "355fe8c3e77b41e3aeca687e0e82e146",
+                    "startTime": "11:00",
+                    "endTime": "12:00",
+                    "bookableNum": 1,
+                    "bookedNum": 0
+                },
+                {
+                    "idBookingSurvey": "dffcf25609934a22910448b4b7206bf9",
+                    "startTime": "14:00",
+                    "endTime": "15:00",
+                    "bookableNum": 1,
+                    "bookedNum": 0
+                },
+                {
+                    "idBookingSurvey": "be61761fad344985b2d20dc63ba31efa",
+                    "startTime": "15:00",
+                    "endTime": "16:00",
+                    "bookableNum": 1,
+                    "bookedNum": 0
+                }
+            ]
+        }
+    ]
+});
 
 const myResponse = {
     status: myStatus,
