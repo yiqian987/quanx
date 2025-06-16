@@ -5,7 +5,8 @@
 **************************************
 
 [rewrite_local]
-^https?://api\.m\.jd\.com/(api\?functionId=coupon_dayCouponList_v2.*|client.action|functionId=bff_rights_points&scene=serviceDetail) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jd_plus_coupon.js
+^https?:\/\/api\.m\.jd\.com\/(?:client\.action|api\?functionId=(coupon_dayCouponList_v2.*|bff_rights_points&scene=serviceDetail)) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jd_plus_coupon.js
+
 [mitm]
 hostname = api.m.jd.com
 
