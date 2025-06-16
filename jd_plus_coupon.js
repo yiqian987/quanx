@@ -5,7 +5,7 @@
 **************************************
 
 [rewrite_local]
-^https?://api\.m\.jd\.com/(api\?functionId=coupon_dayCouponList_v2.*|client.action) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jd_plus_coupon.js
+^https?://api\.m\.jd\.com/(api\?functionId=coupon_dayCouponList_v2.*|client.action|functionId=bff_rights_points&scene=serviceDetail) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/jd_plus_coupon.js
 [mitm]
 hostname = api.m.jd.com
 
@@ -22,5 +22,7 @@ body = body.replace(/\"intervalUsedCount":\d+/g, '\"intervalUsedCount":1');
 body = body.replace(/\"exchangeStatus":\d+/g, '\"exchangeStatus":1');
 
 body = body.replace(/\"hasStock":false/g, '\"hasStock":true');
+
+body = body.replace(/\"skuStatus":5/g, '\"skuStatus":0');
 
 $done({body});
