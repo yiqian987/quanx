@@ -15,7 +15,7 @@ hostname = cxbjwxsj.cpic.com.cn
 
 var body = $response.body;
 
-body = body.replace(/"status":"\d+",/g, '"status":"1",');
+body = body.replace(/"status":"\d+"/g, '"status":"1"');
 body = body.replace(/"surplusFlag"\s*:\s*(?:"N"|null)/g, '"surplusFlag":"Y"');
 
 $done({ body });
