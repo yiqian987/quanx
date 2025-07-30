@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/cxbjwxsj\.cpic\.com\.cn\/moto-api\/motorcycle\/reservation\/(queryReservationInfo|queryReservationDateInfo) url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/cpic.js
+^https?:\/\/cxbjwxsj\.cpic\.com\.cn\/moto-api\/motorcycle\/reservation\/(queryReservationInfo|queryReservationDateInfo) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/cpic.js
 
 [mitm]
 hostname = cxbjwxsj.cpic.com.cn
@@ -15,6 +15,7 @@ hostname = cxbjwxsj.cpic.com.cn
 
 var body = $response.body;
 
-
+body = body.replace(/"status":"\d+"/g, '"status":"1"');
+body = body.replace(/"surplusFlag"\s*:\s*(?:"N"|null)/g, '"surplusFlag":"Y"');
 
 $done({body});
