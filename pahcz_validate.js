@@ -34,4 +34,13 @@ if ($request.method === "POST") {
   }
 }
 
-$done({});
+// $done({});
+$done({
+  response: {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message: "请求被脚本拦截" })
+  }
+});
