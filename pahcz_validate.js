@@ -34,16 +34,5 @@ if ($request.method === "POST") {
   }
 }
 
-$done({
-   response: {
-     status: 403,
-     headers: {
-       "Content-Type": "application/json"
-     },
-     body: JSON.stringify({
-       message: "请求已被拦截，未发送至服务器"
-     })
-   }
- });
-//$done({});
+$done({});
 
