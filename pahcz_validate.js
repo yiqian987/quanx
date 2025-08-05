@@ -1,11 +1,17 @@
-// ==UserScript==
-// @name         Captcha Notify Logger
-// @namespace    http://pingan.com.cn/
-// @version      1.0
-// @description  拦截验证码请求体并通过通知打印内容
-// @author       YourName
-// @match        https://newretail.pingan.com.cn//ydt/captcha/validate/*
-// ==/UserScript==
+/*************************************
+
+项目名称：平安好车主
+使用声明：⚠️仅供参考，🈲转载与售卖！
+
+**************************************
+
+[rewrite_local]
+^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_validate.js
+
+[mitm]
+hostname = newretail.pingan.com.cn
+
+*************************************/
 
 if ($request.method === "POST") {
   let body = $request.body;
