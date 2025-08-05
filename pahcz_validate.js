@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_validate.js
+^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url script-request-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_validate.js
 
 [mitm]
 hostname = newretail.pingan.com.cn
