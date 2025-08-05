@@ -7,7 +7,7 @@
 
 [rewrite_local]
 ^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url script-request-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_validate.js
-
+^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url 302 https://fake.cateyestar.com:2443
 [mitm]
 hostname = newretail.pingan.com.cn
 
