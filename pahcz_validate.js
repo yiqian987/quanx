@@ -7,7 +7,7 @@
 
 [rewrite_local]
 ^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url script-request-body https://raw.githubusercontent.com/yiqian987/quanx/main/pahcz_validate.js
-^https?:\/\/newretail\.pingan\.com\.cn/ydt/captcha/validate\?.* url 302 https://fake.cateyestar.com:2443
+
 [mitm]
 hostname = newretail.pingan.com.cn
 
@@ -34,5 +34,16 @@ if ($request.method === "POST") {
   }
 }
 
-$done({});
+$done({
+   response: {
+     status: 403,
+     headers: {
+       "Content-Type": "application/json"
+     },
+     body: JSON.stringify({
+       message: "请求已被拦截，未发送至服务器"
+     })
+   }
+ });
+//$done({});
 
