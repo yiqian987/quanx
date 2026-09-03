@@ -23,6 +23,12 @@ hostname = hweb-personalcenter.huazhu.com
 var STORE_KEY = 'huazhu_sso_token';
 var META_KEY = 'huazhu_token_meta';
 
+// 通知能力兼容: iOS 版 Quantumult X 提供 $notification.post;
+// Mac 版未注入 $notification 变量, 降级为 console.log(引擎日志), 避免抛异常。
+var notify = (typeof $notification !== 'undefined' && $notification && $notification.post)
+  ? function (t, s, m) { $notification.post(t, s, m); }
+  : function (t, s, m) { console.log('[华住会-通知] ' + t + ' | ' + s + ' | ' + m); };
+
 var body = $response.body;
 
 try {
@@ -63,7 +69,7 @@ try {
     msg += '请长按通知点「拷贝」复制 Token\n';
     msg += token;
 
-    $notification.post(title, subtitle, msg);
+    notify(title, subtitle, msg);
     console.log('[华住会] ' + flag + ': ' + token);
   }
 } catch (e) {
