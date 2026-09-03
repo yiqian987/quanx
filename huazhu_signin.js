@@ -20,6 +20,8 @@ Token 来源(按优先级自动识别):
 Quantumult X 配置(参考, 非必需):
 [task_local]
 10 0 * * * https://raw.githubusercontent.com/yiqian987/quanx/main/huazhu_signin.js, tag=华住会, enabled=true
+  注: QuanX 脚本弹横幅通知用全局函数 $notify(title,subtitle,message)，
+      不存在 $notification 对象(直接调会 ReferenceError)。
 ====================================
 
 青龙部署:
@@ -52,10 +54,10 @@ function Env(name) {
     this.getEnv = function () {
       if (typeof $environment !== 'undefined' && $environment['surge-version']) return 'Surge';
       if (typeof $environment !== 'undefined' && $environment['stash-version']) return 'Stash';
-      if (typeof module !== 'undefined' && module.exports) return 'Node.js';
-      if (typeof $task !== 'undefined') return 'Quantumult X';
+      if (typeof $task !== 'undefined') return 'Quantumult X'; // 先判 QX(仿 XiaoMao: typeof $task)
       if (typeof $loon !== 'undefined') return 'Loon';
       if (typeof $rocket !== 'undefined') return 'Shadowrocket';
+      if (typeof module !== 'undefined' && module.exports) return 'Node.js';
       return void 0;
     };
     this.isNode = function () { return this.getEnv() === 'Node.js'; };
@@ -151,15 +153,18 @@ function Env(name) {
       return this.request({ url: url, method: 'GET', headers: headers });
     };
 
-    /* ---- 通知: QuanX→$notify, Surge系→$notification.post, Node→console+sendNotify ---- */
+    /* ---- 通知: QuanX→$notify(全局函数, 无 $notification 对象!), Surge系→$notification.post, Node→console+sendNotify ---- */
     this.msg = function (title, subtitle, body) {
       title = title || this.name;
       switch (this.getEnv()) {
         case 'Surge': case 'Loon': case 'Stash': case 'Shadowrocket':
-          try { $notification.post(title, subtitle, body); } catch (e) {}
+          try { $notification.post(title, subtitle, body); } catch (e) { console.log('📣' + title + (subtitle ? '\n' + subtitle : '') + (body ? '\n' + body : '')); }
           break;
         case 'Quantumult X':
-          try { $notify(title, subtitle, body); } catch (e) { try { $notification.post(title, subtitle, body); } catch (e2) {} }
+          try {
+            if (typeof $notify === 'function') { $notify(title, subtitle, body); }
+            else { console.log('📣' + title + (subtitle ? '\n' + subtitle : '') + (body ? '\n' + body : '')); }
+          } catch (e) { console.log('📣' + title + (subtitle ? '\n' + subtitle : '') + (body ? '\n' + body : '')); }
           break;
         case 'Node.js':
           console.log('\n==============📣 系统通知 ==============\n' + title + (subtitle ? '\n' + subtitle : '') + (body ? '\n' + body : ''));
