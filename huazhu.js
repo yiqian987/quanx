@@ -3,12 +3,15 @@
 项目名称: 华住会 Token
 
 说明: 拦截华住会登录接口响应，解析 content.ssoToken，
-      通知栏弹出 Token，长按通知点「拷贝」即可复制。
+      写入 Quantumult X 本地存储($prefs) 并打印简短日志。
+      ⚠ Quantumult X 的 rewrite(script-response-body) 脚本环境
+      不提供 $notification(实测 iOS/iPadOS/Mac 均为 undefined)，
+      无法在此直接弹横幅；请搭配任务脚本 huazhu_notify.js
+      ([task_local] 每分钟轮询) 来弹出通知。
       响应内容原样透传，不做任何修改。
 
-用法: 将下方 [rewrite_local] 规则与 [mitm] 主机名
-      粘贴进 Quantumult X 配置文件，脚本按远程地址自动拉取。
-      然后在华住会 App 内完成一次登录即可触发。
+用法: 将下方 [rewrite_local] 规则与 [mitm] 主机名粘贴进配置文件，
+      并另配 [task_local] 行引用 huazhu_notify.js(见其文件头)。
 
 **************************************
 
@@ -23,12 +26,6 @@ hostname = *.huazhu.com
 var STORE_KEY = 'huazhu_sso_token';
 var META_KEY = 'huazhu_token_meta';
 
-// 通知能力兼容: iOS 版 Quantumult X 提供 $notification.post;
-// Mac 版未注入 $notification 变量, 降级为 console.log(引擎日志), 避免抛异常。
-var notify = (typeof $notification !== 'undefined' && $notification && $notification.post)
-  ? function (t, s, m) { $notification.post(t, s, m); }
-  : function (t, s, m) { console.log('[华住会-通知] ' + t + ' | ' + s + ' | ' + m); };
-
 var body = $response.body;
 
 try {
@@ -41,7 +38,7 @@ try {
 
     var oldToken = $prefs.valueForKey(STORE_KEY) || '';
 
-    // 持久化 Token 与账号信息，供复显/后续调用
+    // 持久化 Token 与账号信息，供通知脚本 / 复显脚本读取
     $prefs.setValueForKey(token, STORE_KEY);
     $prefs.setValueForKey(JSON.stringify({
       name: content.name || '',
@@ -49,27 +46,7 @@ try {
       mobile: content.mobile || ''
     }), META_KEY);
 
-    // 提示文案区分首次 / 更新 / 重新登录
     var flag = (oldToken && oldToken !== token) ? 'Token已更新' : (oldToken ? '重新登录' : '首次捕获');
-
-    // 当前时间 年-月-日 时:分
-    var now = new Date();
-    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-    var time = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
-               ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-
-    // 通知标题/副标题/正文（正文最后一行是 Token，方便长按拷贝）
-    var title = '华住会 Token';
-    var subtitle = flag + (content.name ? ' ' + content.name : '') + (content.memberID ? ' (' + content.memberID + ')' : '');
-    var msg = '';
-    if (content.name) msg += '会员: ' + content.name + '\n';
-    if (content.mobile) msg += '手机: ' + content.mobile + '\n';
-    if (content.memberID) msg += '会员号: ' + content.memberID + '\n';
-    msg += '时间: ' + time + '\n';
-    msg += '请长按通知点「拷贝」复制 Token\n';
-    msg += token;
-
-    notify(title, subtitle, msg);
     console.log('[华住会] ' + flag + ': ' + token);
   }
 } catch (e) {
