@@ -15,7 +15,7 @@
 [rewrite_local]
 ^https:\/\/hweb-personalcenter\.huazhu\.com\/login\/login url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/huazhu.js
 [mitm]
-hostname = hweb-personalcenter.huazhu.com
+hostname = *.huazhu.com
 
 *************************************/
 
