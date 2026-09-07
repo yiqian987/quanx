@@ -156,7 +156,10 @@ function Env(name) {
     /* ---- 青龙通知: sendNotify.js 多路径探测, 兼容 task bilibili/hzh.js 这类子目录部署 ----
        青龙 task 执行时 cwd=脚本所在目录, 若脚本在 scripts/bilibili/ 子目录,
        require('./sendNotify') 会找 bilibili/sendNotify.js → 不存在 → 静默吞掉,
-       导致"日志有通知段落但推送不出去"。改为从脚本目录向上逐级探测 sendNotify.js。 */
+       导致"日志有通知段落但推送不出去"。改为从脚本目录向上逐级探测 sendNotify.js。
+       探测顺序(参考 csvw.js 已验证的 fallback 风格):
+         每级目录先探 utils/sendNotify.js, 再探 ./sendNotify.js(优先 utils 因为
+         csvw 用户实际命中的是 bilibili/utils/sendNotify.js) */
     this.qlNotify = function (title, subtitle, body) {
       var fs, path;
       try { fs = require('fs'); path = require('path'); } catch (e) { return; }
@@ -167,12 +170,17 @@ function Env(name) {
       bases.forEach(function (b) {
         var d = b;
         for (var i = 0; i < 4; i++) { // 本级 + 上溯3级父目录
+          // utils/sendNotify.js 优先(参考 csvw.js 风格, 多数用户青龙这里有 Bark/Server 酱等推送配置)
+          tried.push(path.join(d, 'utils', 'sendNotify.js'));
           tried.push(path.join(d, 'sendNotify.js'));
           if (i < 3) d = path.join(d, '..');
         }
       });
       try { // QL_DIR 兜底(青龙容器根)
-        if (process.env.QL_DIR) tried.push(path.join(process.env.QL_DIR, 'scripts', 'sendNotify.js'));
+        if (process.env.QL_DIR) {
+          tried.push(path.join(process.env.QL_DIR, 'scripts', 'utils', 'sendNotify.js'));
+          tried.push(path.join(process.env.QL_DIR, 'scripts', 'sendNotify.js'));
+        }
       } catch (e) {}
       var seen = {}, hit = null;
       for (var j = 0; j < tried.length; j++) {
@@ -181,7 +189,7 @@ function Env(name) {
         try { if (fs.existsSync(tried[j])) { hit = tried[j]; break; } } catch (e) {}
       }
       if (!hit) {
-        console.log('⚠️ 未找到青龙 sendNotify.js(已探测 ' + tried.length + ' 个路径), 仅日志输出。\n   请确认脚本放在青龙 scripts/ 下, 且根目录存在 sendNotify.js(面板通知配置)。');
+        console.log('⚠️ 未找到青龙 sendNotify.js(已探测 ' + tried.length + ' 个路径), 仅日志输出。\n   请确认脚本放在青龙 scripts/ 下, 且存在 sendNotify.js 或 utils/sendNotify.js(面板通知配置)。');
         return;
       }
       try {
@@ -276,9 +284,10 @@ function apiGet(path, token) {
   }
 
   var today = todayStr();
-  // 当日已成功处理 → 静默(防高频重复；失败分支不写标记可重试)
+  // 当日已成功处理 → 仍发一条"已签到"通知(防止 cron 高频重复时漏报;
+  // 此分支只发简短提示, 失败分支不写标记可重试)
   if ($.getdata(DONE_KEY) === today) {
-    $.log('🔕 今日已处理，跳过');
+    $.msg('华住会签到', '🔕 今日已签到', '签到日期: ' + today + '\n' + nowTime() + ' 已完成, 无需重复');
     $.done();
     return;
   }
