@@ -153,6 +153,47 @@ function Env(name) {
       return this.request({ url: url, method: 'GET', headers: headers });
     };
 
+    /* ---- 青龙通知: sendNotify.js 多路径探测, 兼容 task bilibili/hzh.js 这类子目录部署 ----
+       青龙 task 执行时 cwd=脚本所在目录, 若脚本在 scripts/bilibili/ 子目录,
+       require('./sendNotify') 会找 bilibili/sendNotify.js → 不存在 → 静默吞掉,
+       导致"日志有通知段落但推送不出去"。改为从脚本目录向上逐级探测 sendNotify.js。 */
+    this.qlNotify = function (title, subtitle, body) {
+      var fs, path;
+      try { fs = require('fs'); path = require('path'); } catch (e) { return; }
+      var bases = [];
+      try { bases.push(process.cwd()); } catch (e) {}
+      try { if (__dirname) bases.push(__dirname); } catch (e) {}
+      var tried = [];
+      bases.forEach(function (b) {
+        var d = b;
+        for (var i = 0; i < 4; i++) { // 本级 + 上溯3级父目录
+          tried.push(path.join(d, 'sendNotify.js'));
+          if (i < 3) d = path.join(d, '..');
+        }
+      });
+      try { // QL_DIR 兜底(青龙容器根)
+        if (process.env.QL_DIR) tried.push(path.join(process.env.QL_DIR, 'scripts', 'sendNotify.js'));
+      } catch (e) {}
+      var seen = {}, hit = null;
+      for (var j = 0; j < tried.length; j++) {
+        if (seen[tried[j]]) continue;
+        seen[tried[j]] = true;
+        try { if (fs.existsSync(tried[j])) { hit = tried[j]; break; } } catch (e) {}
+      }
+      if (!hit) {
+        console.log('⚠️ 未找到青龙 sendNotify.js(已探测 ' + tried.length + ' 个路径), 仅日志输出。\n   请确认脚本放在青龙 scripts/ 下, 且根目录存在 sendNotify.js(面板通知配置)。');
+        return;
+      }
+      try {
+        var notify = require(hit);
+        var fn = notify && (notify.sendNotify || (typeof notify === 'function' ? notify : null));
+        if (fn) { fn(title, ((subtitle ? subtitle + '\n' : '') + (body || ''))); }
+        else { console.log('⚠️ 已找到 sendNotify.js 但无 sendNotify() 导出: ' + hit); }
+      } catch (e) {
+        console.log('⚠️ 调用青龙通知失败: ' + (e && e.message ? e.message : e));
+      }
+    };
+
     /* ---- 通知: QuanX→$notify(全局函数, 无 $notification 对象!), Surge系→$notification.post, Node→console+sendNotify ---- */
     this.msg = function (title, subtitle, body) {
       title = title || this.name;
@@ -168,10 +209,7 @@ function Env(name) {
           break;
         case 'Node.js':
           console.log('\n==============📣 系统通知 ==============\n' + title + (subtitle ? '\n' + subtitle : '') + (body ? '\n' + body : ''));
-          try { // 青龙 notify: 检测到 sendNotify.js 则自动推送
-            var notify = require('./sendNotify');
-            if (notify && notify.sendNotify) notify.sendNotify(title, subtitle ? subtitle + '\n' + body : body);
-          } catch (e) {}
+          this.qlNotify(title, subtitle, body); // 青龙推送: 多路径探测 sendNotify.js(兼容子目录部署)
           break;
       }
     };
