@@ -22,21 +22,26 @@
 [rewrite_local]
 ^https?:\/\/creditcardapp\.bankcomm\.com url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
 
-【二、302 直达下单页：跳过资格校验链（星巴克30元券 productId=11294182）】
+【二、302 直达下单页：跳过资格校验链（通用版，任意券自动适配）】
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/security\/qualification\/check\.html url 302 https://creditcardapp.bankcomm.com/catering/security/user/order/confirm.html?productId=11294182&buyCount=1
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/security\/qualification\/check\.html\?productId=(\d+).*buyCount=(\d+) url 302 https://creditcardapp.bankcomm.com/catering/security/user/order/confirm.html?productId=$1&buyCount=$2
+
+说明：本规则不再写死星巴克 productId，而是从你点击购买的原请求 URL 中
+正则捕获 productId/buyCount 后原样带入下单页——
+抢星巴克(11294182)、中石化、加油券……任何走 qualification/check.html
+校验链的券都自动生效，各走各的下单页，互不干扰。
+（原请求 URL 若缺 buyCount 则规则不匹配，自动回退为官方原始流程，安全兜底。）
 
 【三、MITM】
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
 
-使用姿势（每天 12:00 开售前）：
-1. 11:55 左右在买单吧打开星巴克30元代金券详情页（productId=11294182）
-2. 点"立即购买"——因 302 规则改道，会直接落在下单确认页（不再被"未开始"弹回）
+使用姿势（每天 12:00 开售前，任意券通用）：
+1. 11:55 左右在买单吧打开目标券详情页（星巴克/中石化/加油券等均可）
+2. 点"立即购买"——因 302 规则改道，会直接落在该券的下单确认页（不再被"未开始"弹回）
 3. 停在下单页等倒计时，12:00:00 整点立刻点支付
-4. 若换商品：把规则二中的 productId 换成目标商品ID（详情页 URL 里有）
 
 回滚：删掉规则二即恢复原行为。
 
