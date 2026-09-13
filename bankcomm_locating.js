@@ -20,10 +20,10 @@
 
 *************************************/
 
-【一、echo-response 规则：拦截 locating.html，写入定位后跳回原页面】
+【一、script-echo-response 规则：拦截 locating.html，写入定位后跳回原页面】
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 
 【二、MITM】
 
@@ -76,8 +76,8 @@ $task.fetch({
   })
 }).then(function (res) {
   console.log('[locating-fix] location.json -> ' + res.statusCode + ' ' + (res.body || '').substring(0, 80));
-  $done({ status: 302, headers: { Location: target } });
+  $done({ status: 302, headers: { Location: target }, body: '' });
 }, function (err) {
   console.log('[locating-fix] POST 失败，仍放行回原页: ' + err);
-  $done({ status: 302, headers: { Location: target } });
+  $done({ status: 302, headers: { Location: target }, body: '' });
 });
