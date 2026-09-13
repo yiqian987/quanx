@@ -10,20 +10,22 @@
     → 定位拿不到（Wi-Fi版iPad无GPS）
     → citySelector.html → 302 loaderror.html「加载失败」
   全程无 location.json POST。定位是服务端会话状态，URL带坐标无效
-  （22:2x Mac curl 对照实验证实：同会话 POST location.json 后 detail.json 即放行）。
+  （Mac curl 对照实验证实：同会话 POST location.json 后 detail.json 即放行）。
 
-本脚本拦截 GET /catering/locating.html：
-  1. 用当前会话 Cookie 直接 POST /catering/api/user/location.json 写入固定坐标
-  2. 302 回 referer 原页面（会话已有定位，服务端放行）
+v3 修复方案（前两版踩坑记录）：
+  v1: url echo-response + 远程URL → QuanX 解析器报 invalid line（echo-response 只接受内联文本）
+  v2: url script-echo-response + $done({status:302}) → 页面白板（status 必须是完整状态行字符串，数字无效）
+  v3: url script-response-body 整页替换为中转页 → 页面 JS 同源 POST location.json（自动带 Cookie）→ location.href 跳回原页面
+      完全避开 302 状态行格式问题，script-response-body 是最成熟的脚本类型。
 
 坐标默认北京（city_code=1000，与抢购目标城市一致），见底部变量可改。
 
 *************************************/
 
-【一、script-echo-response 规则：拦截 locating.html，写入定位后跳回原页面】
+【一、script-response-body 规则：拦截 locating.html，整页替换为中转页】
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 
 【二、MITM】
 
@@ -33,7 +35,7 @@ hostname = creditcardapp.bankcomm.com
 使用姿势（iPad 等无GPS设备）：
 1. QuanX 导入本文件为重写资源（或手动复制【一】规则到 [rewrite_local]）
 2. MITM 已含 creditcardapp.bankcomm.com（与 redfriday.js 相同，导入会合并）
-3. 打开买单吧任意门店/商品页 → 自动写入定位 → 正常加载，不再跳「加载失败」
+3. 打开买单吧任意门店/商品页 → 中转页闪现「正在定位」→ 自动写入定位并跳回 → 正常加载
 4. 需要改城市/坐标时，修改脚本底部 CITY_NO/CITY_NAME/LAT/LNG 四个变量
 
 回滚：删掉本条 rewrite 规则即恢复原行为。
@@ -41,43 +43,36 @@ hostname = creditcardapp.bankcomm.com
 *************************************/
 
 
-// 坐标配置：默认北京（city_code=1000，与抢购目标城市一致）
+// ===== 坐标配置：默认北京（city_code=1000，与抢购目标城市一致）=====
 var CITY_NO   = '1000';
 var CITY_NAME = '北京';
 var LAT = '39.91398958241706';
 var LNG = '116.50666870332198';
 
-// 从 locating.html?referer=xxx 解析原页面路径
+// ===== 从 locating.html?referer=xxx 解析原页面路径（iPad HAR 实测参数名为 referer）=====
 var referer = ($request.url.match(/referer=([^&]*)/) || [])[1] || '';
-var back = referer ? decodeURIComponent(referer) : '/catering/';
+var back = referer ? decodeURIComponent(referer) : '/catering/index.html';
 var target = /^https?:/i.test(back)
   ? back
   : 'https://creditcardapp.bankcomm.com' + (back.indexOf('/') === 0 ? back : '/' + back);
 
-// 取当前请求的会话 Cookie（MITM 解密后可见）
-var h = $request.headers || {};
-var cookie = h['Cookie'] || h['cookie'] || '';
-var ua = h['User-Agent'] || h['user-agent'] || '';
+// ===== 中转页：页面 JS 同源 POST location.json（WebView 自动带当前会话 Cookie），成功后跳回原页面 =====
+var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+  + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">'
+  + '<title>正在定位</title></head>'
+  + '<body style="font-family:-apple-system;background:#f7f7f7;text-align:center;padding-top:40vh;color:#888;font-size:15px">'
+  + '<div>正在定位，请稍候…</div>'
+  + '<script>'
+  + 'var t=' + JSON.stringify(target) + ';'
+  + 'var p={selCityNo:' + JSON.stringify(CITY_NO) + ',selCityName:' + JSON.stringify(CITY_NAME)
+  + ',cityCode:' + JSON.stringify(CITY_NO) + ',cityName:' + JSON.stringify(CITY_NAME)
+  + ',lat:' + JSON.stringify(LAT) + ',lng:' + JSON.stringify(LNG) + '};'
+  // fetch 成功或失败都跳转；再加 4 秒兜底，防止 fetch 挂起导致停留
+  + 'fetch("/catering/api/user/location.json?_="+Date.now(),'
+  + '{method:"POST",headers:{"Content-Type":"application/json;charset=utf-8"},body:JSON.stringify(p)})'
+  + '.then(function(){location.href=t;})'
+  + '.catch(function(){location.href=t;});'
+  + 'setTimeout(function(){location.href=t;},4000);'
+  + '</script></body></html>';
 
-$task.fetch({
-  url: 'https://creditcardapp.bankcomm.com/catering/api/user/location.json',
-  method: 'POST',
-  headers: {
-    'User-Agent': ua,
-    'Cookie': cookie,
-    'Content-Type': 'application/json;charset=utf-8',
-    'Origin': 'https://creditcardapp.bankcomm.com',
-    'Referer': target
-  },
-  body: JSON.stringify({
-    selCityNo: CITY_NO, selCityName: CITY_NAME,
-    cityCode: CITY_NO, cityName: CITY_NAME,
-    lat: LAT, lng: LNG
-  })
-}).then(function (res) {
-  console.log('[locating-fix] location.json -> ' + res.statusCode + ' ' + (res.body || '').substring(0, 80));
-  $done({ status: 302, headers: { Location: target }, body: '' });
-}, function (err) {
-  console.log('[locating-fix] POST 失败，仍放行回原页: ' + err);
-  $done({ status: 302, headers: { Location: target }, body: '' });
-});
+$done({ body: html });
