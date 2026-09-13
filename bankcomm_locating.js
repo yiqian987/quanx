@@ -12,17 +12,16 @@
   全程无 location.json POST。定位是服务端会话状态，URL带坐标无效
   （Mac curl 对照实验证实：同会话 POST location.json 后 detail.json 即放行）。
 
-v3 修复方案（前两版踩坑记录）：
+修复方案（踩坑记录）：
   v1: url echo-response + 远程URL → QuanX 解析器报 invalid line（echo-response 只接受内联文本）
   v2: url script-echo-response + $done({status:302}) → 页面白板（status 必须是完整状态行字符串，数字无效）
-  v3: url script-response-body 整页替换为中转页 → 页面 JS 同源 POST location.json（自动带 Cookie）→ location.href 跳回原页面
-      完全避开 302 状态行格式问题，script-response-body 是最成熟的脚本类型。
+  v3: 结构错误——注释提前闭合，规则段裸露在 JS 里导致远程引用语法报错
+  v4: url script-response-body 整页替换为中转页 → 页面 JS 同源 POST location.json（自动带 Cookie）
+      → location.href 跳回原页面。结构与 redfriday.js 完全一致（单注释包裹全部段落）。
 
 坐标默认北京（city_code=1000，与抢购目标城市一致），见底部变量可改。
 
-*************************************/
-
-【一、script-response-body 规则：拦截 locating.html，整页替换为中转页】
+【一、响应改写规则：拦截 locating.html，整页替换为中转页】
 
 [rewrite_local]
 ^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
@@ -33,12 +32,11 @@ v3 修复方案（前两版踩坑记录）：
 hostname = creditcardapp.bankcomm.com
 
 使用姿势（iPad 等无GPS设备）：
-1. QuanX 导入本文件为重写资源（或手动复制【一】规则到 [rewrite_local]）
-2. MITM 已含 creditcardapp.bankcomm.com（与 redfriday.js 相同，导入会合并）
-3. 打开买单吧任意门店/商品页 → 中转页闪现「正在定位」→ 自动写入定位并跳回 → 正常加载
-4. 需要改城市/坐标时，修改脚本底部 CITY_NO/CITY_NAME/LAT/LNG 四个变量
+1. QuanX 重写-引用 导入本文件（与 redfriday.js 同款结构，导入自动合并规则和 MITM）
+2. 打开买单吧任意门店/商品页 → 中转页闪现「正在定位」→ 自动写入定位并跳回 → 正常加载
+3. 需要改城市/坐标时，修改脚本底部 CITY_NO/CITY_NAME/LAT/LNG 四个变量
 
-回滚：删掉本条 rewrite 规则即恢复原行为。
+回滚：删掉本条重写规则即恢复原行为。
 
 *************************************/
 
@@ -62,7 +60,7 @@ var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
   + '<title>正在定位</title></head>'
   + '<body style="font-family:-apple-system;background:#f7f7f7;text-align:center;padding-top:40vh;color:#888;font-size:15px">'
   + '<div>正在定位，请稍候…</div>'
-  + '<script>'
+  + '<scr' + 'ipt>'
   + 'var t=' + JSON.stringify(target) + ';'
   + 'var p={selCityNo:' + JSON.stringify(CITY_NO) + ',selCityName:' + JSON.stringify(CITY_NAME)
   + ',cityCode:' + JSON.stringify(CITY_NO) + ',cityName:' + JSON.stringify(CITY_NAME)
@@ -73,6 +71,6 @@ var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
   + '.then(function(){location.href=t;})'
   + '.catch(function(){location.href=t;});'
   + 'setTimeout(function(){location.href=t;},4000);'
-  + '</script></body></html>';
+  + '</scr' + 'ipt></body></html>';
 
 $done({ body: html });
