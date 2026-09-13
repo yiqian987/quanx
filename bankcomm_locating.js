@@ -1,20 +1,19 @@
 /*************************************
 
-项目名称：买单吧无GPS设备定位修复（iPad mini 等）
-使用声明：⚠️仅供参考，🈲转载与售卖！
+项目名称: 买单吧定位修复
 
-原理：无GPS设备拿不到定位，会话无坐标导致页面跳
-locating.html 死循环，最终「加载失败」。本脚本拦截
-locating.html，整页替换为中转页，写入定位后跳回原页面。
-坐标默认北京，可在脚本底部变量修改。
+说明: 拦截买单吧 locating.html，整页替换为中转页，
+      写入定位(默认北京，坐标在脚本底部变量可改)
+      后跳回原页面，修复无GPS设备「加载失败」死循环。
+      响应整页替换，仅用于无GPS的iPad等设备。
 
-【一、响应改写规则】
+用法: 将下方 [rewrite_local] 规则与 [mitm] 主机名粘贴进配置文件，
+      或直接远程引用本文件。
+
+**************************************
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
-
-【二、MITM】
-
+^https:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 [mitm]
 hostname = creditcardapp.bankcomm.com
 
