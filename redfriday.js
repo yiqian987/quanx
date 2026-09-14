@@ -29,7 +29,18 @@
 【二、响应改写：提前激活购买按钮（详情页加速）】
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/ url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+
+（2026-09-14 收窄说明）本条原为整域名兜底，会连 locating.html 一起吃掉。
+QX 重写规则是「先本地后远程，远程列表从上到下、最上面的优先」，
+只匹配第一条，若本条排在前面，bankcomm_locating.js 的定位修复就永远不触发。
+本脚本真正要改的 4 个字段实测只出现在两个接口里：
+  buttonType        -> /catering/api/product/detail.json
+  reddestActCount   -> /catering/api/marketing/list.json
+  productActStatus  -> /catering/api/marketing/list.json
+  currentTm         -> 6 份 HAR（09-11~09-14）中从未出现
+故收窄为 /catering/api/，同时不再拦 orcorder 下单链/静态资源，抢购 POST 少一层脚本开销。
+回滚：把本行正则改回 ^https?:\/\/creditcardapp\.bankcomm\.com 即可。
 
 【三、MITM】
 
