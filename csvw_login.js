@@ -10,6 +10,10 @@
  * 环境变量：
  *   csvw_account = {"mobile":"13800000000","pwd":"xxxxxx"}   # 可选，用于 ck 过期后重登
  *   csvw_data    = {"deviceid":"...","did":"...","token":"..."}  # ck，脚本会自动写入/更新
+ *   CSVW_BARK    = https://xxx/设备码 或 纯设备码              # 可选，Bark 推送(原生直推)
+ *   BARK_PUSH    = 同上，CSVW_BARK 的通用别名(两者取其一即可)
+ *
+ * 通知：Bark 原生直推 -> 青龙 sendNotify(pushplus/微信) -> QX $notify -> 打印日志，依次降级
  *
  * 策略：
  *   1. 有 ck 且距过期 > 2 天  -> 直接用 PUT at/actions/refresh 换 accessToken
@@ -47,8 +51,59 @@ const store = {
         $prefs.setValueForKey(v, k);
     },
 };
-/* 通知：Node(青龙)优先走同目录 sendNotify(微信/pushplus)，QX 走 $notify，都没有则打印日志 */
+/* ---------------- HTTP：Node(内置 https，零依赖) | QX($httpClient) ---------------- */
+/* 统一返回 [err, data]，永不抛异常 */
+const httpPost = (url, json) => new Promise(resolve => {
+    if (!isNode) {
+        try {
+            $httpClient.post({ url, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json) },
+                (e, r, d) => { try { resolve([e, typeof d === 'string' ? JSON.parse(d) : d]); } catch (_) { resolve([e, { __raw: d }]); } });
+        } catch (e) { resolve([e, null]); }
+        return;
+    }
+    try {
+        const u = new URL(url);
+        const mod = require(u.protocol === 'https:' ? 'https' : 'http');
+        const body = JSON.stringify(json);
+        const rq = mod.request({
+            hostname: u.hostname, port: u.port || (u.protocol === 'https:' ? 443 : 80),
+            path: u.pathname + u.search, method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            timeout: 15000,
+        }, res => {
+            let buf = '';
+            res.on('data', c => buf += c);
+            res.on('end', () => { try { resolve([null, JSON.parse(buf)]); } catch (_) { resolve([null, { __raw: buf }]); } });
+        });
+        rq.on('error', e => resolve([e, null]));
+        rq.on('timeout', () => { rq.destroy(); resolve([new Error('请求超时'), null]); });
+        rq.write(body); rq.end();
+    } catch (e) { resolve([e, null]); }
+});
+
+/* ---------------- Bark 原生直推 ----------------
+ * 不依赖青龙的 sendNotify / task_before 注入，换环境也能用。
+ * 地址来源优先级：CSVW_BARK > BARK_PUSH（环境变量 或 QX $prefs）
+ * 支持完整 URL 或纯设备码(自动补 https://api.day.app/)。脚本内不硬编码任何 key。
+ */
+const getConf = k => (isNode ? (process.env[k] || '') : ($prefs.valueForKey(k) || ''));
+const barkPush = async (title, content) => {
+    const key = (getConf('CSVW_BARK') || getConf('BARK_PUSH') || '').trim();
+    if (!key) { log('ℹ️ 未配置 CSVW_BARK / BARK_PUSH，跳过 Bark 推送'); return false; }
+    const base = /^https?:\/\//i.test(key) ? key.replace(/\/+$/, '') : `https://api.day.app/${key}`;
+    const group = getConf('CSVW_BARK_GROUP') || '上汽大众';
+    const [err, data] = await httpPost(base, { title, body: content, group });
+    if (err) { log('❌ Bark 推送失败: ' + err.message); return false; }
+    if (data && data.code === 200) { log('✅ Bark 推送成功(group=' + group + ', code=200 success)'); return true; }
+    log('⚠️ Bark 返回异常: ' + JSON.stringify(data));
+    return false;
+};
+
+/* ---------------- 通知：Bark 原生 + 青龙 sendNotify + QX $notify ----------------
+ * 三者依次降级：Bark 直推 -> sendNotify(pushplus/微信等) -> QX $notify -> 打印日志
+ */
 const notify = async (t, c) => {
+    await barkPush(t, c);
     if (isNode) {
         try {
             const m = require('./sendNotify');
@@ -56,16 +111,16 @@ const notify = async (t, c) => {
             if (typeof fn === 'function') {
                 const r = fn(t, c);
                 if (r && typeof r.catch === 'function') await r.catch(() => { });
-                console.log('\n===== ' + t + ' (已通过 sendNotify 推送) =====\n' + c + '\n');
+                log('\n===== ' + t + ' (已通过 sendNotify 推送) =====\n' + c + '\n');
                 return;
             }
         } catch (e) { /* 无 sendNotify 则降级打日志 */ }
-        console.log(`\n===== ${t} =====\n${c}\n`);
+        log(`\n===== ${t} =====\n${c}\n`);
         return;
     }
     if (typeof $notify === 'function') $notify(t, '', c);
     else if (typeof $msg === 'function') $msg(t, '', c);
-    else console.log(a.join(' '));
+    else log(`===== ${t} =====\n${c}`);
 };
 const log = (...a) => isNode ? console.log(...a) : console.log(a.join(' '));
 
