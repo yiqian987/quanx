@@ -47,10 +47,25 @@ const store = {
         $prefs.setValueForKey(v, k);
     },
 };
-const notify = (t, c) => {
-    if (isNode) console.log(`\n===== ${t} =====\n${c}\n`);
-    else if (typeof $notify === 'function') $notify(t, '', c);
-    else $msg && $msg(t, '', c);
+/* 通知：Node(青龙)优先走同目录 sendNotify(微信/pushplus)，QX 走 $notify，都没有则打印日志 */
+const notify = async (t, c) => {
+    if (isNode) {
+        try {
+            const m = require('./sendNotify');
+            const fn = (m && (m.sendNotify || m)) || null;
+            if (typeof fn === 'function') {
+                const r = fn(t, c);
+                if (r && typeof r.catch === 'function') await r.catch(() => { });
+                console.log('\n===== ' + t + ' (已通过 sendNotify 推送) =====\n' + c + '\n');
+                return;
+            }
+        } catch (e) { /* 无 sendNotify 则降级打日志 */ }
+        console.log(`\n===== ${t} =====\n${c}\n`);
+        return;
+    }
+    if (typeof $notify === 'function') $notify(t, '', c);
+    else if (typeof $msg === 'function') $msg(t, '', c);
+    else console.log(a.join(' '));
 };
 const log = (...a) => isNode ? console.log(...a) : console.log(a.join(' '));
 
@@ -272,12 +287,12 @@ async function main() {
         if (!deviceId || !did) {
             push('❌ 未配置 deviceid/did：风控要求设备指纹必须是已授信的那台，随机生成会直接被判新设备');
             push('   请在 csvw_account 里补齐并重试：{"mobile":"..","pwd":"..","deviceid":"..","did":".."}');
-            notify('上汽大众', msgs.join('\n'));
+            await notify('上汽大众', msgs.join('\n'));
             return;
         }
         if (!mobile || !pwd) {
             push('❌ 无可用的 ck 且未配置 csvw_account(mobile/pwd)，无法继续');
-            notify('上汽大众', msgs.join('\n'));
+            await notify('上汽大众', msgs.join('\n'));
             return;
         }
         await c.pwdlogin(mobile, pwd);
@@ -294,7 +309,7 @@ async function main() {
     push(await c.signStatus());
     push(await c.points());
 
-    notify('上汽大众', msgs.join('\n'));
+    await notify('上汽大众', msgs.join('\n'));
 }
 
 isNode
