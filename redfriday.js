@@ -29,18 +29,31 @@
 【二、响应改写：提前激活购买按钮（详情页加速）】
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/ url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/product\/detail\.json url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/marketing\/list\.json url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
 
-（2026-09-14 收窄说明）本条原为整域名兜底，会连 locating.html 一起吃掉。
-QX 重写规则是「先本地后远程，远程列表从上到下、最上面的优先」，
-只匹配第一条，若本条排在前面，bankcomm_locating.js 的定位修复就永远不触发。
-本脚本真正要改的 4 个字段实测只出现在两个接口里：
+（2026-09-14 二次收窄说明）本条经历两次收窄：整域名 -> /catering/api/ -> 两个具体接口。
+踩过的坑依次是：
+  ① 整域名兜底会把 locating.html 一起吃掉 —— QX 重写「先本地后远程、
+     远程列表从上到下、只取第一条匹配」，排在前面的宽正则会让后面的规则永远不触发，
+     bankcomm_locating.js 的定位修复就死在这上面。
+  ② /catering/api/ 兜底表面上解决了 ①，但把 rpkt / dishes / reviews /
+     recommend / search.config / user/location 全拉进了 script-response-body。
+     2026-09-14 20:52 的 iPad HAR 里实测：该正则命中 16 条请求，真正需要改写的 0 条，
+     而其中 7 条以 status 0（无响应头、timings 全 -1、连接被断）失败，
+     连带 SPA 跳 citySelector -> loaderror 白板。
+本脚本真正要改的字段只出现在这两个接口里：
   buttonType        -> /catering/api/product/detail.json
   reddestActCount   -> /catering/api/marketing/list.json
   productActStatus  -> /catering/api/marketing/list.json
   currentTm         -> 6 份 HAR（09-11~09-14）中从未出现
-故收窄为 /catering/api/，同时不再拦 orcorder 下单链/静态资源，抢购 POST 少一层脚本开销。
-回滚：把本行正则改回 ^https?:\/\/creditcardapp\.bankcomm\.com 即可。
+注意：value="NN" / currentTm 只出现在 product/detail.html（HTML）里，不在 JSON 接口里，
+这两条 replace 一直是空转的；若要让它们生效，需再加一条针对
+  ^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/product\/detail\.html
+的同类规则（本次未加 —— 每多一条改写就多一分 status 0 断流风险，按需自行开启）。
+⚠️ 上面这行故意不写成完整规则行：注释里若出现「url + 脚本类型 + 脚本地址」完整三段，
+   资源解析器有可能把它误认成第三条规则，把 product/detail.html 也拉进改写。
+回滚：把两行正则换回 ^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/ 即可。
 
 【三、MITM】
 
@@ -62,18 +75,28 @@ hostname = creditcardapp.bankcomm.com
 *************************************/
 
 
-var body = $response.body;
+// 2026-09-14 加固：原版是裸写 body.replace，$response.body 一旦为 null/undefined
+// （例如 QX 没解出 body、或响应是无内容的 204/304），body.replace 直接抛 TypeError，
+// 脚本异常退出 => $done 永远不会被调用 => QX 挂着这个请求直到 App 超时 abort，
+// HAR 里就表现为 status 0 / 响应头为空 / timings 全 -1（2026-09-14 iPad HAR 实测）。
+// 所以这里用 try/catch 兜死：$done 一定会被调用，最坏也只是原样放行，绝不挂请求。
+(function () {
+  var body = ($response && $response.body) || '';
 
-body = body.replace(/\"reddestActCount":\d+/g, '\"reddestActCount":1');
+  try {
+    body = body.replace(/\"reddestActCount":\d+/g, '\"reddestActCount":1');
+    body = body.replace(/\"buttonType":"\d+"/g, '\"buttonType":"01"');
+    body = body.replace(/\"productActStatus":"\d+"/g, '\"productActStatus":""');
+    body = body.replace(/value="\d+"/g, 'value="01"');
+    body = body.replace(
+      /currentTm = (""|"\d:\d{1,2}:\d{1,2}")/g,
+      'currentTm = "11:00:00"'
+    );
+    body = body.replace(
+      /\"currentTm":"\d{1,2}:\d{2}:\d{2}"/g,
+      '\"currentTm":"11:00:00"'
+    );
+  } catch (e) {}
 
-body = body.replace(/\"buttonType":"\d+"/g, '\"buttonType":"01"');
-
-body = body.replace(/\"productActStatus":"\d+"/g, '\"productActStatus":""');
-
-body = body.replace(/value="\d+"/g, 'value="01"');
-
-body = body.replace(/currentTm = (""|"\d:\d{1,2}:\d{1,2}")/g, 'currentTm = "11:00:00"');
-
-body = body.replace(/\"currentTm":"\d{1,2}:\d{2}:\d{2}"/g, '\"currentTm":"11:00:00"');
-
-$done({body});
+  $done({ body: body });
+})();
