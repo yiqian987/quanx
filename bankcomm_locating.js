@@ -1,120 +1,100 @@
 /*************************************
 
-项目名称: 买单吧定位修复（iPad 无 GPS 死循环）
+项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v12
 
-原理: iPad 无 GPS -> 页面 JS 拿不到定位 -> 服务端把页面 302 到
-      locating.html -> 该页又跳 citySelector -> 服务端再 302 到
-      loaderror，整站加载失败（门店/商品/活动页全白）。
-      本规则接管 locating.html：先用 App 自己的 Cookie 把北京定位
-      写进服务端会话，再 302 回原页面；同时补上城市参数，让页面 JS
-      的 resovleLocation 直接命中，不再走 GPS 分支。
+原理（iPhone 对比实测，2026-09-14）:
+      iPhone 每打开一个页面，页面 JS 都会自动 POST
+      /catering/api/user/location.json 把坐标写进服务端会话
+      （81 条请求里 8 次，全部 200，会话里一直有定位）。
+      iPad 无 GPS，页面 JS 拿不到坐标，一次都不 POST，
+      服务端会话里始终没有定位，于是：
+        门店页 -> 302 -> locating.html -> 页面 JS 无坐标
+             -> 跳 citySelector.html -> 服务端 302
+             -> loaderror.html -> 整站白板
+      本规则接管 locating.html：在服务端返回的真实页面里注入一段
+      脚本，由 WebView 自己用 App 的 Cookie 同步 POST 定位（与
+      iPhone 的原生行为完全一致），成功后跳回原页面并补上城市参数，
+      让页面 JS 的 resovleLocation 直接命中，不再走 GPS 分支。
+      另外顺手接管首页 index.html，只写定位不跳转，做到进 App 就
+      先把定位备好（服务端定位会话寿命约 2~3 小时）。
+
+      离线实测（iPad 真实 Cookie）:
+        无定位 GET 门店页  -> 302
+        POST location.json -> LOCATION_SUCCESSFUL
+        再 GET 门店页      -> 200 / 16773B
+
+      相对 v11 的改动：v11 用 script-echo-response 配 $httpClient
+      异步 POST，真机实测产出的是 0 字节空响应（HAR 里表现为
+      Content-Length 0 + text/plain + statusText OK，无 Server），
+      页面直接白板。v12 改为 script-response-body 注入，POST 交给
+      WebView 自己发，同域自带 Cookie，最坏情况也只是回到原来。
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-echo-response https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/index\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
 
-维护提示: 本文件是「rewrite 资源 + 远程脚本」双用文件。全文只允许
-      一对块注释（就是包住本段的那一对）；任何一行不得超过 340 字符；
-      源码里不得出现连续的 HTML 文档声明字样，否则资源解析器会判为
-      网页并丢弃整个文件。
+v12.1 两个真 bug 修复（都是会让定位写不进去的硬伤）:
+      1) 同步 XHR 不能设 timeout。规范规定同步请求设置 timeout 会抛
+         InvalidAccessError，一抛 POST 就发不出去，等于没修。现在
+         只在异步分支设 timeout，同步失败退 navigator.sendBeacon。
+      2) 注入点插在 <head> 之后、<meta charset> 之前，此时浏览器还
+         没确定编码，body 里的中文会乱码。现在整段注入脚本做纯
+         ASCII 化（中文转 \uXXXX），保证任何编码下都能正确解析。
+
+维护提示: 本文件是 rewrite 资源 + 远程脚本 双用文件。全文只允许
+      一对块注释（就是包住本段的那一对）；任何一行不得超过 340
+      字符；源码里不得出现连续的 HTML 文档声明字样，否则资源
+      解析器会判为网页并丢弃整个文件。任何异常都必须原样放行，
+      绝不能产出空 body。
 
 *************************************/
 
 
 var HOME = 'https://creditcardapp.bankcomm.com';
-var LOC_API = HOME + '/catering/api/user/location.json';
+var LOC = HOME + '/catering/api/user/location.json';
 var CITY_NO = '1000';
 var CITY_NAME = '北京';
 var LAT = '39.91398958241706';
 var LNG = '116.50666870332198';
-var DONE = false;
+var MAX_ROUND = 2;
 
-function finish(obj) {
-  if (DONE) return;
-  DONE = true;
-  $done(obj);
+function getParam(s, name) {
+  var m = String(s).match(new RegExp('[?&]' + name + '=([^&]*)'));
+  if (!m) return '';
+  try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
 }
 
-function pickHeader(name) {
-  var h = ($request && $request.headers) || {};
-  var low = name.toLowerCase();
-  var keys = Object.keys(h);
-  for (var i = 0; i < keys.length; i++) {
-    if (keys[i].toLowerCase() === low) return h[keys[i]];
+// 轮次：首次进 locating.html 时自身没有标记，要从 referer 里读
+// （referer 是编码过的，_qxloc=1 里的等号会变成 %3D）
+function currentRound() {
+  var v = getParam($request.url, '_qxloc');
+  if (!v) {
+    var ref = getParam($request.url, 'referer');
+    var m = String(ref).match(/_qxloc(?:%3D|=)(\d+)/i);
+    v = m ? m[1] : '0';
   }
-  return '';
-}
-
-function decode(s) {
-  try { return decodeURIComponent(s); } catch (e) { return s; }
-}
-
-function stripMark(t) {
-  // 去掉上一回合留下的标记，避免参数叠加
-  t = t.replace(new RegExp(markRe, 'ig'), '$1');
-  t = t.replace(/\?&/g, '?').replace(/&&/g, '&').replace(/[?&]$/, '');
-  return t;
+  return parseInt(v, 10) || 0;
 }
 
 function buildTarget(round) {
-  var m = ($request.url.match(/referer=([^&]*)/) || [])[1] || '';
-  var t = decode(m) || '/catering/index.html';
+  var t = getParam($request.url, 'referer') || '/catering/index.html';
   if (!/^https?:/i.test(t)) {
     t = HOME + (t.charAt(0) === '/' ? '' : '/') + t;
   }
-  var hash = '';
-  var hi = t.indexOf('#');
-  if (hi >= 0) { hash = t.slice(hi); t = t.slice(0, hi); }
-  t = stripMark(t);
+  t = t.replace(/([?&])_qxloc=[^&]*/g, '$1');
+  t = t.replace(/[?&]$/, '');
   var sep = t.indexOf('?') >= 0 ? '&' : '?';
-  if (t.indexOf('selCityNo=') < 0) {
-    t += sep + 'selCityNo=' + CITY_NO
-      + '&selCityName=' + encodeURIComponent(CITY_NAME)
-      + '&lat=' + LAT + '&lng=' + LNG;
-    sep = '&';
-  }
-  t += sep + '_qxloc=' + round;
-  return t + hash;
+  t = t + sep + 'selCityNo=' + CITY_NO
+    + '&selCityName=' + encodeURIComponent(CITY_NAME)
+    + '&lat=' + LAT + '&lng=' + LNG + '&_qxloc=' + round;
+  return t;
 }
 
-function fail(msg) {
-  var html = '<html><head><meta charset="utf-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '</head><body style="font-family:-apple-system;text-align:center;'
-    + 'padding-top:40vh;color:#888;font-size:15px">' + msg
-    + '</body></html>';
-  finish({
-    status: 'HTTP/1.1 200 OK',
-    headers: { 'Content-Type': 'text/html; charset=UTF-8' },
-    body: html
-  });
-}
-
-function redirectTo(url) {
-  finish({
-    status: 'HTTP/1.1 302 Found',
-    headers: {
-      'Location': url,
-      'Content-Type': 'text/html; charset=UTF-8',
-      'Cache-Control': 'no-store'
-    },
-    body: ''
-  });
-}
-
-// 回合数：0 = 首次拦截；1 = 补过一次（会话过期时会走到这里，允许再补一次）；
-// 2 = 连补两次仍被弹回，说明写不进去，不再重定向，避免死循环。
-// 注意：referer 是 URL 编码过的，标记里的 "=" 会变成 "%3D"，两种都要认。
-var markRe = '([?&])_qxloc(?:=|%3D)\\d+';
-var ROUND = parseInt((($request.url.match(/_qxloc(?:%3D|=)(\d+)/i) || [])[1] || '0'), 10) || 0;
-var target = buildTarget(ROUND + 1);
-
-if (ROUND >= 2) {
-  fail('定位写入未生效，请完全退出 APP 后重进');
-} else {
-  var body = JSON.stringify({
+function payload() {
+  return JSON.stringify({
     selCityNo: CITY_NO,
     selCityName: CITY_NAME,
     cityCode: CITY_NO,
@@ -122,21 +102,60 @@ if (ROUND >= 2) {
     lat: LAT,
     lng: LNG
   });
-  $httpClient.post({
-    url: LOC_API + '?_=' + Date.now(),
-    headers: {
-      'Content-Type': 'application/json;charset=utf-8',
-      'Accept': 'application/json',
-      'Origin': HOME,
-      'Referer': target,
-      'Cookie': pickHeader('Cookie')
-    },
-    body: body
-  }, function (err, resp, data) {
-    if (!err && data && String(data).indexOf('LOCATION_SUCCESSFUL') >= 0) {
-      redirectTo(target);
-    } else {
-      fail('定位写入失败，请完全退出 APP 后重进');
-    }
+}
+
+// 注入脚本会插在 <head> 之后，而 <meta charset> 在其后，此时浏览器
+// 还没确定编码，中文可能乱码。把非 ASCII 全转成 \uXXXX 保证纯 ASCII。
+function ascii(str) {
+  return String(str).replace(/[^\x00-\x7f]/g, function (c) {
+    return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
   });
 }
+
+// 注入进页面的浏览器脚本：写定位（同域自带 App Cookie）再跳。
+// locating.html 用同步 XHR，抢在 SPA 的 app.js 执行前写完，避免它先
+// 跳去 citySelector 触发 loaderror 死循环；首页用异步，不阻塞渲染。
+// 注意：同步 XHR 不能设 timeout（规范规定会抛 InvalidAccessError，
+// 一抛 POST 就发不出去），所以只在异步分支设。同步失败退 sendBeacon。
+function injectCode(target, round, useAsync) {
+  var p = [];
+  var body = ascii(payload());
+  p.push('<scr' + 'ipt>');
+  p.push('(function(){');
+  p.push('var r=' + round + ',t=' + JSON.stringify(target) + ';');
+  p.push('if(r>=' + MAX_ROUND + ')return;');
+  p.push('try{var x=new XMLHttpRequest();');
+  p.push('x.open("POST","' + LOC + '?_="+Date.now(),' + (useAsync ? 'true' : 'false') + ');');
+  p.push('x.setRequestHeader("Content-Type",');
+  p.push('"application/json;charset=utf-8");');
+  if (useAsync) { p.push('x.timeout=5000;'); }
+  p.push('x.send(\'' + body + '\');}catch(e){');
+  p.push('try{navigator.sendBeacon("' + LOC + '",');
+  p.push('new Blob([\'' + body + '\'],');
+  p.push('{type:"application/json"}));}catch(e2){}}');
+  p.push('if(t)location.replace(t);');
+  p.push('})();');
+  p.push('</scr' + 'ipt>');
+  return p.join('');
+}
+
+(function () {
+  var body = ($response && $response.body) || '';
+  var out = body;
+  try {
+    if (body && /<head/i.test(body)) {
+      var round = currentRound();
+      if (round < MAX_ROUND) {
+        var isLoc = /\/catering\/locating\.html/.test($request.url);
+        var target = isLoc ? buildTarget(round + 1) : '';
+        // 首页只异步写定位不跳转，也不阻塞渲染
+        var code = injectCode(target, round, !isLoc);
+        out = body.replace(/<head([^>]*)>/i, '<head$1>' + code);
+        if (out === body) { out = code + body; }
+      }
+    }
+  } catch (e) {
+    out = body;
+  }
+  $done({ body: out });
+})();
