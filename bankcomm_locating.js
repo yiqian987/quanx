@@ -1,6 +1,6 @@
 /*************************************
 
-项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v12
+项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v13
 
 原理（iPhone 对比实测，2026-09-14）:
       iPhone 每打开一个页面，页面 JS 都会自动 POST
@@ -18,6 +18,26 @@
       另外顺手接管首页 index.html，只写定位不跳转，做到进 App 就
       先把定位备好（服务端定位会话寿命约 2~3 小时）。
 
+      v13 关键发现（2026-09-14 20:52 真机 HAR）: 上面这套只打通了
+      一半。"服务端会话里有定位"和"页面能正常渲染"是两个独立闸门:
+        闸门 1 服务端: 会话无定位 -> 门店页 302 到 locating.html
+        闸门 2 前端: SPA 的 bundle 要求 URL 的 query 里必须带
+                    selCityNo / selCityName / lat / lng，读不到就
+                    直接跳 citySelector.html -> 302 -> loaderror
+      HAR 铁证（同一份 HAR、同一个会话）:
+        #20 store/detail.html?storeId=..&selCityNo=1000&lat=.. 200
+            页面正常渲染，后续 15 个 JSON 全 200
+        #37 store/detail.html?storeId=..              200/16773B
+            页面本身正常返回，但 SPA 立刻跳 citySelector -> loaderror
+      差别只在 URL 有没有那 4 个城市参数。iPhone 有 GPS，页面 JS 拿到
+      坐标后会自己把参数补进导航 URL；iPad 拿不到坐标 -> 裸 URL -> 白板。
+      这也是"第一次能进、后面又不行"的原因: 第一次是被我们脚本拼好参数
+      跳回去的，后面是 App 原生导航，全是裸 URL。
+      所以 v13 再接管两个 SPA 页面入口，发现 URL 缺城市参数时，先同步
+      写定位再 location.replace 到带参数的地址，与 iPhone 原生行为一致
+      （iPhone 也是拿到 GPS 后 replace 一次）。URL 参数已齐就跳过，
+      不会二次改写。
+
       离线实测（iPad 真实 Cookie）:
         无定位 GET 门店页  -> 302
         POST location.json -> LOCATION_SUCCESSFUL
@@ -31,7 +51,12 @@
 
 [rewrite_local]
 ^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/store\/detail\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/search\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 ^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/index\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+
+四条规则互不重叠，且都不匹配 /catering/api/，与 redfriday.js 无冲突。
+门店页被服务端 302 到 locating.html 时没有 body，会自动落到异常分支原样放行。
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
@@ -93,6 +118,30 @@ function buildTarget(round) {
   return t;
 }
 
+// 门店页/搜索页这类 SPA 页面，bundle 会要求 URL 里带城市四参数。
+// 只要缺一个就判定为裸 URL，需要补参数跳转。
+function needParams() {
+  return !getParam($request.url, 'selCityNo') || !getParam($request.url, 'lat');
+}
+
+// 基于当前 URL 自身拼出带参数的地址（不重复追加已有的同名参数）
+function buildSelfTarget(round) {
+  var t = String($request.url).replace(/([?&])_qxloc=[^&]*/g, '$1');
+  t = t.replace(/[?&]$/, '');
+  var add = [
+    ['selCityNo', CITY_NO],
+    ['selCityName', encodeURIComponent(CITY_NAME)],
+    ['lat', LAT],
+    ['lng', LNG]
+  ];
+  for (var i = 0; i < add.length; i++) {
+    if (!getParam(t, add[i][0])) {
+      t = t + (t.indexOf('?') >= 0 ? '&' : '?') + add[i][0] + '=' + add[i][1];
+    }
+  }
+  return t + (t.indexOf('?') >= 0 ? '&' : '?') + '_qxloc=' + round;
+}
+
 function payload() {
   return JSON.stringify({
     selCityNo: CITY_NO,
@@ -147,11 +196,26 @@ function injectCode(target, round, useAsync) {
       var round = currentRound();
       if (round < MAX_ROUND) {
         var isLoc = /\/catering\/locating\.html/.test($request.url);
-        var target = isLoc ? buildTarget(round + 1) : '';
-        // 首页只异步写定位不跳转，也不阻塞渲染
-        var code = injectCode(target, round, !isLoc);
-        out = body.replace(/<head([^>]*)>/i, '<head$1>' + code);
-        if (out === body) { out = code + body; }
+        var isPage = /\/catering\/(store\/detail|search)\.html/.test($request.url);
+        var target = '';
+        var useAsync = false;
+        var skip = false;
+        if (isLoc) {
+          // 服务端把门店页踢过来的：写完定位跳回 referer 原页
+          target = buildTarget(round + 1);
+        } else if (isPage) {
+          // 门店页/搜索页：URL 缺城市四参数就补一次；已齐全直接放行
+          if (needParams()) { target = buildSelfTarget(round + 1); }
+          else { skip = true; }
+        } else {
+          // 首页等其它页面：只异步预热定位，不跳转也不阻塞渲染
+          useAsync = true;
+        }
+        if (!skip) {
+          var code = injectCode(target, round, useAsync);
+          out = body.replace(/<head([^>]*)>/i, '<head$1>' + code);
+          if (out === body) { out = code + body; }
+        }
       }
     }
   } catch (e) {
