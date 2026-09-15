@@ -1,6 +1,6 @@
 /*************************************
 
-项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v13
+项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v14
 
 原理（iPhone 对比实测，2026-09-14）:
       iPhone 每打开一个页面，页面 JS 都会自动 POST
@@ -43,6 +43,26 @@
         POST location.json -> LOCATION_SUCCESSFUL
         再 GET 门店页      -> 200 / 16773B
 
+      v14 关键发现（2026-09-15 14:14 真机 HAR）: v13 的门店页链路已
+      完全跑通（#30 302 -> #31 locating 200/17710B 注入成功 -> #32
+      POST 200 -> #33 门店页 200/16773B -> #35~#45 全部 JSON 200），
+      而且 #34 出现了"页面 JS 自己发的"第二次 POST（body 里
+      cityCode/cityName 是 null，不是我们脚本的格式）—— 说明补上参数
+      之后 App 已经恢复原生定位行为，与 iPhone 一致。
+      但仍有两类页面在跳 citySelector:
+        1) /catering/security/user/order/detail.html（"我的订单"详情）
+           —— 实测它的 body 与门店页 16773B 的壳**完全相同**，
+              属于同一个 SPA，补同样的四参数即可
+        2) /ccmmfood/cms/*.html、/openapps/cms/*.html（营销活动页）
+           —— 另一个 SPA，从 HAR 看它加载后立即跳 citySelector，
+              中间没有任何 JSON 请求
+      逐页加规则是补不完的（App 里 SPA 入口有十几个），所以 v14 改为
+      **按路径族覆盖**: 一条正则收
+        /catering/  /ccmmfood/  /openapps/  下所有以 .html 结尾的页面
+      脚本内部按 URL 分支处理（locating 跳回 referer / index 只预热
+      不跳转 / 其它页面缺参数就补）。刻意排除 orcorder、orcpayment、
+      idm 三个路径 —— 那是下单和登录链，与城市无关，别碰。
+
       相对 v11 的改动：v11 用 script-echo-response 配 $httpClient
       异步 POST，真机实测产出的是 0 字节空响应（HAR 里表现为
       Content-Length 0 + text/plain + statusText OK，无 Server），
@@ -50,13 +70,18 @@
       WebView 自己发，同域自带 Cookie，最坏情况也只是回到原来。
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/locating\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/store\/detail\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/search\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/index\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/(catering|ccmmfood|openapps)\/[^?]*\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 
-四条规则互不重叠，且都不匹配 /catering/api/，与 redfriday.js 无冲突。
-门店页被服务端 302 到 locating.html 时没有 body，会自动落到异常分支原样放行。
+v14 起合并为上述一条（按路径族覆盖，脚本内部按 URL 分支）。要点:
+  - 只收 .html 结尾的页面导航请求，不匹配 /catering/api/ 下任何 JSON
+    接口，与 redfriday.js 无冲突
+  - 刻意排除 orcorder / orcpayment / idm 三个路径（下单与登录链，
+    与城市无关，且是抢购下单的必经链路，不要拉进 MITM）
+  - 被服务端 302 的页面（门店页无定位时、citySelector 等）没有 body，
+    会自动落到异常分支原样放行
+  - 不用负向零宽断言，QX 侧编译失败会导致整条规则静默失效
+  - 回滚成 v13 的四条具体规则: 把本行换成 locating / store\/detail /
+    search / index 四条各自独立的正则即可
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
@@ -124,6 +149,12 @@ function needParams() {
   return !getParam($request.url, 'selCityNo') || !getParam($request.url, 'lat');
 }
 
+// 营销活动页（ccmmfood / openapps 下的 CMS 页）是另一套 SPA，它页面
+// 数据里用的字段名是 cityCode / cityName，除四参数外再补一份。
+function isCms() {
+  return /\/(ccmmfood|openapps)\//.test($request.url);
+}
+
 // 基于当前 URL 自身拼出带参数的地址（不重复追加已有的同名参数）
 function buildSelfTarget(round) {
   var t = String($request.url).replace(/([?&])_qxloc=[^&]*/g, '$1');
@@ -134,6 +165,10 @@ function buildSelfTarget(round) {
     ['lat', LAT],
     ['lng', LNG]
   ];
+  if (isCms()) {
+    add.push(['cityCode', CITY_NO]);
+    add.push(['cityName', encodeURIComponent(CITY_NAME)]);
+  }
   for (var i = 0; i < add.length; i++) {
     if (!getParam(t, add[i][0])) {
       t = t + (t.indexOf('?') >= 0 ? '&' : '?') + add[i][0] + '=' + add[i][1];
@@ -196,20 +231,23 @@ function injectCode(target, round, useAsync) {
       var round = currentRound();
       if (round < MAX_ROUND) {
         var isLoc = /\/catering\/locating\.html/.test($request.url);
-        var isPage = /\/catering\/(store\/detail|search)\.html/.test($request.url);
+        var isHome = /\/catering\/index\.html/.test($request.url);
         var target = '';
         var useAsync = false;
         var skip = false;
         if (isLoc) {
           // 服务端把门店页踢过来的：写完定位跳回 referer 原页
           target = buildTarget(round + 1);
-        } else if (isPage) {
-          // 门店页/搜索页：URL 缺城市四参数就补一次；已齐全直接放行
-          if (needParams()) { target = buildSelfTarget(round + 1); }
-          else { skip = true; }
-        } else {
-          // 首页等其它页面：只异步预热定位，不跳转也不阻塞渲染
+        } else if (isHome) {
+          // 首页：只异步预热定位，不跳转也不阻塞渲染
           useAsync = true;
+        } else if (needParams()) {
+          // 其余所有页面（门店页 / 搜索页 / 订单详情 / 营销活动页…）：
+          // URL 缺城市参数就同步写定位再补参数重载一次，与 iPhone 一致
+          target = buildSelfTarget(round + 1);
+        } else {
+          // 参数已齐：原样放行，绝不二次改写
+          skip = true;
         }
         if (!skip) {
           var code = injectCode(target, round, useAsync);
