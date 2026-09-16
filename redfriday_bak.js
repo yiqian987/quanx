@@ -6,7 +6,7 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+^https?:\/\/creditcardapp\.bankcomm\.com url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday_bak.js
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
