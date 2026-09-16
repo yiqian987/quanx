@@ -1,16 +1,19 @@
 /*************************************
 
-项目名称：最红星期五 抢购字段改写 v17（纯 JSON 接口 / 与定位脚本零冲突）
+项目名称：最红星期五 抢购字段改写 v18（纯 JSON 接口 / 与定位脚本零冲突）
 使用声明：⚠️仅供参考，🈲转载与售卖！
 
-用法：QuanX 的 rewrite 远程引用里加上本文件：
-      https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday_v17.js
-      redfriday.js / redfriday_bak.js / redfriday_v16.js 三个旧文件全部保持原样，
-      随时可回滚。
+用法：QuanX 的 rewrite 远程引用指向本文件即可：
+      https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
+
+      自 2026-09-16 起，本文件是这个改写脚本的唯一主文件，后续所有更新都改这里。
+      ⚠️ redfriday_bak.js 是用户自己的历史备份，本文件之外的任何改动都不允许，
+         该文件保持只读、永不修改。
+      临时分支 redfriday_v16.js / redfriday_v17.js 的内容已并入此处并从仓库删除。
 
 **************************************
 
-【v17 存在的唯一理由：与 bankcomm_locating.js 划清边界】
+【为什么规则只收 JSON：与 bankcomm_locating.js 划清边界】
 
 2026-09-16 用户实测反馈：redfriday_v16 与 bankcomm_locating 同时启用时页面
 又加载不出来，只开 locating 就正常。根因是规则的**完全包含关系**：
@@ -37,7 +40,7 @@
 两个远程引用在列表里的先后顺序 —— 用户删一次引用重导一次，顺序就可能变。
 这种耦合必须连根拔掉，而不是去记"应该把谁排前面"。
 
-v17 的解法：**两边各占一条互不相交的地盘**
+解法：**两边各占一条互不相交的地盘**（v17 引入，v18 沿用）
     bankcomm_locating  ->  只收 .html   （页面导航）
     redfriday_v17      ->  只收 .json   （接口数据）
 没有任何一个 URL 能同时匹配两边，于是顺序再也不影响结果。
@@ -96,7 +99,7 @@ product/detail.json 里的 buttonType 是 "00" 还是 "01"。
 **************************************
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/(?:product\/detail|marketing\/list|store\/detail|recommend)\.json url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday_v17.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/api\/(?:product\/detail|marketing\/list|store\/detail|recommend)\.json url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/redfriday.js
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
@@ -107,7 +110,9 @@ hostname = creditcardapp.bankcomm.com
   - 脚本内部另有一道 URL 守卫（同 v16），即便将来有人把规则放宽，
     改写范围也不会失控。两层防护，互相兜底
 
-回滚：删掉本文件的远程引用即可；两侧旧文件都在，加回去就恢复。
+回滚：删掉本文件的远程引用即可；redfriday_bak.js 仍在仓库里，随时可换回去。
+若要恢复更早的"整域名兜底"写法（不推荐，见上），把上面那条正则换回
+^https?:\/\/creditcardapp\.bankcomm\.com 即可。
 
 *************************************/
 
@@ -120,6 +125,8 @@ hostname = creditcardapp.bankcomm.com
 //  - 09-16 v16 加 URL 守卫（限制改写范围），v17 保留。
 //  - 09-16 v17 规则收窄到纯 JSON：与 bankcomm_locating 的 .html 地盘零交集，
 //    彻底摆脱"两个远程引用谁排前面"的隐性依赖。
+//  - 09-16 v18 收口：v16/v17 并入本文件，仓库里只留 redfriday.js 与
+//    redfriday_bak.js 两个文件，消灭"到底引用的是哪个"的混乱。
 (function () {
   var body = ($response && $response.body) || '';
   var url = String(($request && $request.url) || '');
