@@ -1,6 +1,6 @@
 /*************************************
 
-项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v14
+项目名称: 买单吧定位修复（iPad 无 GPS 死循环）v15
 
 原理（iPhone 对比实测，2026-09-14）:
       iPhone 每打开一个页面，页面 JS 都会自动 POST
@@ -63,6 +63,31 @@
       不跳转 / 其它页面缺参数就补）。刻意排除 orcorder、orcpayment、
       idm 三个路径 —— 那是下单和登录链，与城市无关，别碰。
 
+      v15 关键修复（2026-09-16 12:00 全链路真机 HAR）: v14 那条
+      "(catering|ccmmfood|openapps)/*.html" 太宽，**把同在 /catering/
+      下的下单支付链一并吃掉了**，实测确认:
+        /catering/security/authorization/check.html
+        /catering/security/qualification/check.html   <- 抢购 302 入口
+        /catering/security/user/order/confirm.html    <- 下单页
+        /catering/security/user/payment/result.html   <- 支付结果页
+      四个页面全部落进本规则的 script-response-body。后果有两个:
+        1) 抢购被拖慢：confirm/result 两个页面各被注入脚本后 reload
+           一次，实测每次多花 0.3s 左右（HAR #36->#38、#48->#50）
+        2) 更致命 —— QX 重写「只命中第一条」，本规则排在前面就把
+           qualification/check.html 抢走了，redfriday.js 里那条
+           "提前进 orclogin 链" 的 302 规则永远轮不到执行。
+           HAR 铁证：#29 qualification/check.html 的 302 带着
+           Server: Tengine + Via（服务端原生响应），Location 里
+           callbackurl 用的是未编码斜杠 "catering/security/..."，
+           而脚本产出的是 "catering%2Fsecurity%2F..." —— 一眼可辨。
+      所以 v15 把 catering 收窄到 SPA 路由白名单目录（从
+      product/detail.html 的 RouterEntry prefetch 列表里取全了：
+      biz-district / error / flash-sale / index / marketing /
+      panic-buy / preload / product / review / search / store /
+      union-pay / user），再加 catering 根级 html；
+      /catering/security/ 只剩"我的订单详情"这一条单独放行。
+      下单支付链就此让出，交还给 redfriday.js。
+
       相对 v11 的改动：v11 用 script-echo-response 配 $httpClient
       异步 POST，真机实测产出的是 0 字节空响应（HAR 里表现为
       Content-Length 0 + text/plain + statusText OK，无 Server），
@@ -70,18 +95,26 @@
       WebView 自己发，同域自带 Cookie，最坏情况也只是回到原来。
 
 [rewrite_local]
-^https?:\/\/creditcardapp\.bankcomm\.com\/(catering|ccmmfood|openapps)\/[^?]*\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/(?:catering\/(?:[^?\/]*\.html|(?:biz-district|error|flash-sale|index|marketing|panic-buy|preload|product|review|search|store|union-pay|user)\/[^?]*\.html)|(?:ccmmfood|openapps)\/[^?]*\.html) url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
+^https?:\/\/creditcardapp\.bankcomm\.com\/catering\/security\/user\/order\/detail\.html url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/bankcomm_locating.js
 
-v14 起合并为上述一条（按路径族覆盖，脚本内部按 URL 分支）。要点:
+v14 起按路径族覆盖（脚本内部按 URL 分支），v15 做了收窄。要点:
   - 只收 .html 结尾的页面导航请求，不匹配 /catering/api/ 下任何 JSON
     接口，与 redfriday.js 无冲突
+  - catering 下只收 SPA 路由目录 + 根级 html；第二条单独收
+    /catering/security/user/order/detail.html（我的订单详情）
+  - 🔴 /catering/security/ 下的下单支付链（authorization/check、
+    qualification/check、order/confirm、payment/result）**必须让出**：
+    一是它们不需要城市参数，被注入只会白白 reload 一次拖慢抢购；
+    二是 QX 只命中第一条，占着就会让 redfriday.js 的抢购 302 规则
+    永远不触发。脚本内也加了第二道黑名单兜底
   - 刻意排除 orcorder / orcpayment / idm 三个路径（下单与登录链，
     与城市无关，且是抢购下单的必经链路，不要拉进 MITM）
   - 被服务端 302 的页面（门店页无定位时、citySelector 等）没有 body，
     会自动落到异常分支原样放行
   - 不用负向零宽断言，QX 侧编译失败会导致整条规则静默失效
-  - 回滚成 v13 的四条具体规则: 把本行换成 locating / store\/detail /
-    search / index 四条各自独立的正则即可
+  - 回滚成 v14 的整路径族: 把两条换成下面这一行即可
+    ^https?:\/\/creditcardapp\.bankcomm\.com\/(catering|ccmmfood|openapps)\/[^?]*\.html
 
 [mitm]
 hostname = creditcardapp.bankcomm.com
@@ -223,11 +256,20 @@ function injectCode(target, round, useAsync) {
   return p.join('');
 }
 
+// v15 第二道防线：下单支付链一律不改写。正则层面已经把这些路径让
+// 出去了（交给 redfriday.js 的抢购 302 规则），这里是兜底 —— 万一
+// 将来有人放宽了正则，也不至于再把 confirm 页抢回来 reload 一次。
+function isOrderFlow() {
+  return /\/catering\/security\/(?:authorization|qualification)\//.test($request.url)
+    || /\/catering\/security\/user\/order\/confirm\.html/.test($request.url)
+    || /\/catering\/security\/user\/payment\/result\.html/.test($request.url);
+}
+
 (function () {
   var body = ($response && $response.body) || '';
   var out = body;
   try {
-    if (body && /<head/i.test(body)) {
+    if (body && /<head/i.test(body) && !isOrderFlow()) {
       var round = currentRound();
       if (round < MAX_ROUND) {
         var isLoc = /\/catering\/locating\.html/.test($request.url);
