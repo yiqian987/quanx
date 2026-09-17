@@ -1,6 +1,6 @@
 /*************************************
 
-项目名称：挖财记账 v3（去开屏/插屏广告 + 去埋点上报，引用不变）
+项目名称：挖财记账 v4（去广告 + 去埋点 + 关掉 VIP 伪装，引用不变）
 使用声明：⚠️仅供参考，🈲转载与售卖！
 
 **************************************
@@ -10,6 +10,39 @@
 远程引用还是原来那个 wacai.js。规则段只**新增**了一条埋点拦截行排在前面，
 整域名兜底那条原样保留；脚本段仍在内部按 URL 分支处理广告位。
 所以在 QuanX 里刷新一下远端资源就生效，不用删引用、不用重导。
+
+v4 额外变化：**默认关掉了老版本遗留的 12 条 VIP 字段伪装**（详见下面【v4】），
+怀疑它就是"自定义封面按钮消失"的原因。
+
+**************************************
+
+【v4（2026-09-18）：关掉 VIP 伪装的理由 —— 它很可能就是"自定义封面"按钮的开关】
+
+用户实测纠正：**`vipRightType` 根本不是付费开关，50 个预设封面随便用**。
+那前面【三】里"换封面是付费权益"的结论是错的，一并作废。
+
+真正的问题在另一个字段。`/api/book/cover/list` 的响应体**只有两个字段**：
+
+    { "data": { "bookCovers": [ ...50 个... ], "isVipMember": false } }
+
+而老脚本 12 条 replace 里，**唯一能在这个接口上真正改到东西的**，就是最后一条：
+
+    "isVipMember": false  ->  true
+
+推理链：
+
+1. 用户有 6 个账本用的是自定义图片（`/api/v2/book/list` 里 `cover` 字段是
+   `https://img.wacai.com/f/7n/private/...` 私有图，而非预设图的 `group_book_cover_8`）
+2. `cover/list` **不下发任何"自定义"入口字段** ⇒ 按钮是前端写死的，
+   靠 `isVipMember` 这类身份字段决定显示哪套 UI
+3. 非会员(false) 通常用不了会员封面库，UI 走"自定义上传"分支；
+   伪造成会员(true) 后 UI 切成会员封面库分支 ⇒ **自定义按钮没了**
+4. 用户说"之前就坏了" —— 老脚本从第一天起就在改这个字段，所以症状和脚本同龄
+
+会员权益本身服务端 RSA-1024 验签，伪造从来拿不到真东西（见【三】），
+所以关掉它**零损失**，只有可能修好按钮。
+
+代码一行没删，脚本顶部 `VIP_ENABLE` 改成 true 可完整恢复。
 
 **************************************
 
@@ -75,8 +108,10 @@ SDK 收到 200 会认为上报成功、丢弃本地缓存；直接断连接会�
 
 【三、关于原有的 VIP 字段改写：实测只在前端生效，别抱期待】
 
-v1 那 12 条 replace（`isVip` / `vipType` / `adFreeVipEnable` …）**一行没动，原样保留**。
-但要把实测结果说清楚 —— 用 2026-09-17 这份 HAR 逐条查改写痕迹：
+v1 那 12 条 replace（`isVip` / `vipType` / `adFreeVipEnable` …）代码**一行没删**，
+但 v4 起用 `VIP_ENABLE = false` 默认**关掉**了，理由见【v4】。
+
+下面是 2026-09-17 那份 HAR 的逐条实测（开着 VIP_ENABLE 时的行为，存档备查）：
 
     被改成功的（前端显示层）：
       /api/usercenter/userInfo         isVip:1                （5 处命中）
@@ -95,17 +130,12 @@ v1 那 12 条 replace（`isVip` / `vipType` / `adFreeVipEnable` …）**一行�
 
 **************************************
 
-【四、"换账本封面"用不了：不是故障，是付费权益】
+【四、v3 之外没有做的几件事（记在这里免得以后重复问）】
 
-`/api/book/cover/list` 实测返回 **50 个封面，vipRightType 全部 = 1**（没有一个 0）。
-服务端把每一个封面都标成会员专属，非会员点了自然弹开通会员。
-
-这个字段改起来技术上很容易（把 1 改成 0 就行），但那是**绕过付费权益**，
-不是优化体验，我不做。想要用得正路开通会员。
-下面是 v3 之外**没有做**的几件事，都记在这里免得以后重复问：
-
-    vipRightType 1 -> 0           不做，付费权益
-    伪造 sign 接口的验签          做不到，需要服务端密钥
+    vipRightType 1 -> 0           不需要 —— 用户实测：它根本不是付费开关，50 个封面随便用
+                                  （v3 及更早在这里写错了，结论作废）
+    伪造 sign 接口的验签          做不到，需要服务端密钥（RSA-1024，7 天一换）
+    拿别人的会员 sign 顶替        不做 —— 冒用他人付费身份，且最多 7 天就失效
     把 cover 大图替换成缩略图     没做，会显著降低预览质量（需要可自行加，见脚本末尾注释）
 
 **************************************
@@ -153,8 +183,13 @@ hostname = jz.wacaijizhang.com
 //  - v3（2026-09-17）规则段新增神策埋点 `/sensor/sa` 的本地拒止，排在兜底规则
 //    前面 ⇒ 埋点根本不会进本脚本，脚本段一行没改。用 reject-200 而非 reject：
 //    SDK 收到 200 才认为上报成功并丢缓存，断连接会让它重试 + 堆积。
+//  - v4（2026-09-18）**默认关掉 v1 遗留的 12 条 VIP 伪装**（VIP_ENABLE=false）。
+//    原因见文件头【v4】一节：它唯一能改动的真字段是 `/api/book/cover/list` 的
+//    `isVipMember`，而该字段极可能就是"自定义封面"按钮的显示开关。
+//    会员权益本身服务端验签（RSA-1024），伪造从来无效，关掉零损失。
 (function () {
-  var AD_ENABLE = true;   // 改成 false 即只保留 v1 行为
+  var AD_ENABLE = true;    // 改成 false 即只保留 v1 行为
+  var VIP_ENABLE = false;  // v4 起默认关：VIP 伪装无实际权益，且有副作用嫌疑
   var body = ($response && $response.body) || '';
   var url = String(($request && $request.url) || '');
   var out = body;
@@ -169,19 +204,23 @@ hostname = jz.wacaijizhang.com
   }
 
   try {
-    // ---- v1 原有逻辑，原样保留 ----
-    out = out.replace(/\"isVip":\d+/g, '\"isVip":1');
-    out = out.replace(/\"sex":"\d+"/g, '\"sex":"1"');
-    out = out.replace(/\"isPermanentVip":\w+/g, '\"isPermanentVip":true');
-    out = out.replace(/\"freeSendVipEnable":\d+/g, '\"freeSendVipEnable":1');
-    out = out.replace(/\"freeSendAdFreeVipEnable":\d+/g, '\"freeSendAdFreeVipEnable":1');
-    out = out.replace(/\"vipType":\d+/g, '\"vipType":2');
-    out = out.replace(/\"expireDaysDays":\d+/g, '\"expireDaysDays":99999');
-    out = out.replace(/\"vipMemberEnable":\d+/g, '\"vipMemberEnable":1');
-    out = out.replace(/\"adFreePermanentVip":\w+/g, '\"adFreePermanentVip":true');
-    out = out.replace(/\"matchVipTrial":\w+/g, '\"matchVipTrial":true');
-    out = out.replace(/\"adFreeVipEnable":\d+/g, '\"adFreeVipEnable":1');
-    out = out.replace(/\"isVipMember":\w+/g, '\"isVipMember":true');
+    // ---- v1 原有逻辑：12 条 VIP 字段伪装 ----
+    // v4 起默认关闭（VIP_ENABLE=false），详见文件头【v4】一节。
+    // 想恢复老行为把它改回 true 即可，代码一行没删。
+    if (VIP_ENABLE) {
+      out = out.replace(/\"isVip":\d+/g, '\"isVip":1');
+      out = out.replace(/\"sex":"\d+"/g, '\"sex":"1"');
+      out = out.replace(/\"isPermanentVip":\w+/g, '\"isPermanentVip":true');
+      out = out.replace(/\"freeSendVipEnable":\d+/g, '\"freeSendVipEnable":1');
+      out = out.replace(/\"freeSendAdFreeVipEnable":\d+/g, '\"freeSendAdFreeVipEnable":1');
+      out = out.replace(/\"vipType":\d+/g, '\"vipType":2');
+      out = out.replace(/\"expireDaysDays":\d+/g, '\"expireDaysDays":99999');
+      out = out.replace(/\"vipMemberEnable":\d+/g, '\"vipMemberEnable":1');
+      out = out.replace(/\"adFreePermanentVip":\w+/g, '\"adFreePermanentVip":true');
+      out = out.replace(/\"matchVipTrial":\w+/g, '\"matchVipTrial":true');
+      out = out.replace(/\"adFreeVipEnable":\d+/g, '\"adFreeVipEnable":1');
+      out = out.replace(/\"isVipMember":\w+/g, '\"isVipMember":true');
+    }
 
     // ---- v2 新增：广告位 ----
     if (AD_ENABLE) {
