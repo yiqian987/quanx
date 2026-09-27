@@ -108,7 +108,7 @@ hostname = guest.ruc.edu.cn
         );
       }
 
-      // ---- 2) 预约校门默认选第一个 ----
+      // ---- 2) 预约校门默认选第一个 ---- 
       var anchor2 =
         'this.privilegeList=i.rows.map(function(e){return{text:e.privilegeGroupName,value:e.privilegeGroupId}}),';
       if (out.indexOf(anchor2) >= 0) {
