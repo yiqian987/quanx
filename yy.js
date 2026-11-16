@@ -6,9 +6,9 @@
 **************************************
 
 [rewrite_local]
-^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/ui\/v1\/mobileVisitorService\/getAdmissionNotice url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/ruc.js
-^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/ui\/v1\/mobileVisitorService\/getOrderDateAvailable url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/ruc.js
-^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/static\/js\/chunk-[^\/]*\.js url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/ruc.js
+^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/ui\/v1\/mobileVisitorService\/getAdmissionNotice url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/yy.js
+^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/ui\/v1\/mobileVisitorService\/getOrderDateAvailable url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/yy.js
+^https?:\/\/guest\.ruc\.edu\.cn\/visitor\/static\/js\/chunk-[^\/]*\.js url script-response-body https://raw.githubusercontent.com/yiqian987/quanx/main/yy.js
 
 [mitm]
 hostname = guest.ruc.edu.cn
